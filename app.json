@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "MyEcommerceAppp",
-    "slug": "MyEcommerceAppp",
+    "name": "H.A.N.U.M.A.N",
+    "slug": "H.A.N.U.M.A.N",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo_new.png",
@@ -20,10 +20,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/logo_new.png",
+        "backgroundColor": "#ffffff"
       },
       "package": "com.ashokarigala.MyEcommerceAppp"
     },
