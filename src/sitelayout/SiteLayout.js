@@ -773,11 +773,11 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: "#f0f7f0", // Light greenish background
+    // backgroundColor: "white", // Light greenish background
   },
   // Enhanced Header with Green Theme
   header: {
-    backgroundColor: "#9f3398", // Deep green
+    backgroundColor: "white", // Deep green
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: "row",
@@ -822,7 +822,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   headerTitle: {
-    color: "#fff",
+    color: "green",
     fontSize: 18,
     fontWeight: "bold",
     letterSpacing: 0.5,
