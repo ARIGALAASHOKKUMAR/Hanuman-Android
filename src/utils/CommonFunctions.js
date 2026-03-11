@@ -166,7 +166,7 @@ export const CommonLogout = async (
   } finally {
     // 2. then clear redux state
     dispatch(logOut());
-    dispatch(hideLoader());
+dispatch(hideLoader());
     dispatch(hideMessage());
 
     if (navigation) {

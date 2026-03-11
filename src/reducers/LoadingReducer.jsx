@@ -1,6 +1,6 @@
 export const initialState = {
   loading: false,
-  loadingText: "",
+  loadingText: "Loading, Please Wait...",
 };
 
 const LoadingReducer = (state = initialState, action) => {

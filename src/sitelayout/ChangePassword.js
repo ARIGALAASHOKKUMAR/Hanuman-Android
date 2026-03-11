@@ -13,7 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Ionicons } from "@expo/vector-icons";
-import { CHANGE_PASSWORD, CONTEXT_HEADING, myAxios } from "../utils/utils";
+import { CHANGE_PASSWORD, commonAPICall, CONTEXT_HEADING, myAxios } from "../utils/utils";
 import { hideLoader, showLoader, login, showMessage } from "../actions";
 import { store } from "../reducers/allReducers";
 
@@ -71,16 +71,14 @@ const ChangePassword = () => {
   });
 
   const submitDetails = async (values, { resetForm }) => {
-    let msg = "";
-    let msgType = "";
 
-    try {
-      dispatch(showLoader("Loading, Please Wait....."));
+      const response = await commonAPICall(CHANGE_PASSWORD, values,"post",dispatch);
 
-      const response = await myAxios.post(CHANGE_PASSWORD, values);
+      console.log("reee",response.data);
+      
 
       if (response.status === 200) {
-        const existingPayload = store.getState().LoginReducer;
+        const existingPayload = state;
 
         const updatedPayload = {
           ...existingPayload,
@@ -89,10 +87,7 @@ const ChangePassword = () => {
         };
 
         dispatch(login(updatedPayload));
-        msg = response.data.message;
-        msgType = "success";
         resetForm();
-
         setPasswordChecks({
           minLength: false,
           lowerCase: false,
@@ -100,23 +95,9 @@ const ChangePassword = () => {
           number: false,
           specialChar: false,
         });
-      } else {
-        msg = response.data.message;
-        msgType = "failure";
-      }
-    } catch (error) {
-      msg =
-        error?.response?.data?.message && error?.response?.data?.status
-          ? `${error.response.data.message} (${error.response.data.status})`
-          : "Something went wrong";
-      msgType = "failure";
-    }
+      } 
+    } 
 
-    dispatch(showMessage(msg, msgType));
-    dispatch(hideLoader());
-
-    alert(msg);
-  };
 
   const formik = useFormik({
     initialValues: {

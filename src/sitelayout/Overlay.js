@@ -1,21 +1,9 @@
 import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Modal, StyleSheet, Text, View } from "react-native";
 import { useSelector } from "react-redux";
 
 function Overlay() {
-  const { loading, loadingText } = useSelector(
-    (state) => state.LoadingReducer || {}
-  );
-
-
-  console.log("loadingText",loading);
-  
+  const { loading, loadingText } = useSelector((state) => state.LoadingReducer);
 
   const [userLoading, setUserLoading] = useState("Loading, Please Wait...");
   const [randomFact, setRandomFact] = useState("");
@@ -51,29 +39,30 @@ function Overlay() {
     }
   };
 
-//   useEffect(() => {
-//     setUserLoading(
-//       typeof loadingText === "string" && loadingText.trim()
-//         ? loadingText
-//         : "Loading, Please Wait..."
-//     );
+  useEffect(() => {
+    setUserLoading(
+      typeof loadingText === "string" && loadingText.trim()
+        ? loadingText
+        : "Loading, Please Wait...",
+    );
 
-//     const randomIndex = getSecureRandomIndex(facts.length);
-//     setRandomFact(facts[randomIndex]);
-//   }, [loading, loadingText]);
+    const randomIndex = getSecureRandomIndex(facts.length);
+    setRandomFact(facts[randomIndex]);
+  }, [loading, loadingText]);
 
   const isTeluguFact = /[\u0C00-\u0C7F]/.test(randomFact);
 
-//   if (!loading) return null;
+  if (!loading) return null;
+
 
   return (
     <Modal visible={loading} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#ffffff" />
-          <Text style={styles.loadingText}>{loadingText}</Text>
+          <Text style={styles.loadingText}>{userLoading}</Text>
 
-          {!!randomFact && (
+          {randomFact && (
             <Text
               style={[
                 styles.factText,

@@ -16,7 +16,7 @@ import * as Yup from "yup";
 
 import { hideLoader, showLoader, login, showMessage } from "../actions";
 import { store } from "../reducers/allReducers";
-import { commonAPICall, CONTEXT_HEADING, myAxios } from "../utils/utils";
+import { commonAPICall, CONTEXT_HEADING, myAxios, UpdateProfile } from "../utils/utils";
 
 const ProfileUpdate = () => {
   const dispatch = useDispatch();
@@ -45,62 +45,24 @@ const ProfileUpdate = () => {
       .required("Please Enter Mobile Number"),
   });
 
-
-
-    
-
   const submitDetails = async (values, { resetForm }) => {
-
-        console.log("accessTokentesttt", state.token);
-
-    let msg = "";
-    let msgType = "";
-
-    try {
-      //      dispatch(showLoader("Loading, Please Wait....."));
-
-      console.log("FROMTRYYYYYY", values);
-
-      //   const response = await myAxios.post(UpdateProfile, values);
-
-      const response = await myAxios.post(UpdateProfile, values);
-
-      console.log("response", response);
-
-      if (response.status === 200) {
-        const existingPayload = store.getState().LoginReducer;
-
-        const updatedPayload = {
-          ...existingPayload,
-          isProfileUpdated: "Y",
-          officerName: values.officerName,
-          mobile: values.mobileNumber,
-        };
-
-        dispatch(login(updatedPayload));
-
-        msg = response.data.message;
-        msgType = "success";
-        resetForm();
-      } else {
-        msg = response.data.message;
-        msgType = "failure";
-      }
-    } catch (error) {
-      msg =
-        error?.response?.data?.message && error?.response?.data?.status
-          ? `${error.response.data.message} (${error.response.data.status})`
-          : "Something went wrong";
-      msgType = "failure";
-    }
-
-    dispatch(showMessage(msg, msgType));
-    dispatch(hideLoader());
-
-    Alert.alert(
-      msgType === "success" ? "Success" : "Error",
-      msg || "Something went wrong",
+    const response = await commonAPICall(
+      UpdateProfile,
+      values,
+      "POST",
+      dispatch,
     );
+    if (response.status === 200) {
+      const existingPayload = state;
+      const updatedPayload = {
+        ...existingPayload,
+        isProfileUpdated: "Y",
+        officerName: values.officerName,
+        mobile: values.mobileNumber,
+      };
+      dispatch(login(updatedPayload));
+      resetForm();
+    }
   };
 
   if (!isLoggedIn) {

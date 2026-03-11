@@ -71,18 +71,18 @@ export  default function ImageBucket(e, formik, path, name, size){
                 resolve(response.data)
                 formik.setFieldValue(name, IMG_DOWNLOAD_URL + response?.data);
                 toast.success("File Uploaded Successfully");
-                dispatch(hideLoader());
+            dispatch(hideLoader());
                }).catch((error) =>
                 {
                 formik.setFieldValue(name, null);
                 toast.error("Unfortunately, we encountered an error while attempting to upload a file to 'imagebucket'.", error);
                 resolve(null);
-                dispatch(hideLoader());
+            dispatch(hideLoader());
                });
  
         });
     }
-    dispatch(hideLoader());
+dispatch(hideLoader());
  
  
 }
@@ -108,7 +108,7 @@ export   function ImageBucket2(e, formik, path, name, size) {
           resolve(response.data);
           formik.setFieldValue(name, IMG_DOWNLOAD_URL + response?.data);
           toast.success("File Uploaded Successfully");
-          dispatch(hideLoader());
+      dispatch(hideLoader());
         })
         .catch((error) => {
           formik.setFieldValue(name, null);
@@ -117,7 +117,7 @@ export   function ImageBucket2(e, formik, path, name, size) {
             error
           );
           resolve(null);
-          dispatch(hideLoader());
+      dispatch(hideLoader());
         });
     });
   }

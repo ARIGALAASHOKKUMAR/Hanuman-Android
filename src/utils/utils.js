@@ -2,7 +2,8 @@ import axios from "axios";
 import { Alert } from "react-native";
 import { store } from "../reducers/allReducers";
 import { useDispatch } from "react-redux";
-import { hideMessage, showLoader } from "../actions";
+import { hideLoader, hideMessage, showLoader, showMessage } from "../actions";
+import { Toast } from "react-native-sprinkle-toast";
 
 export const base_url = "https://swapi.dev.nidhi.apcfss.in/apsawmills";
 
@@ -12,7 +13,7 @@ const accessToken = state.LoginReducer.token;
 export const myAxios = axios.create({
   baseURL: base_url,
   headers: {
-    Authorization: accessToken ? `Bearer ${accessToken}` : "",
+    // Authorization: accessToken ? `Bearer ${accessToken}` : "",
   },
 });
 
@@ -21,45 +22,56 @@ export const myAxiosLogin = axios.create({
   headers: {},
 });
 
-// myAxios.interceptors.request.use(
-//   (config) => {
-//     const state = store.getState();
-//     const accessToken = state.LoginReducer.token;
+myAxios.interceptors.request.use(
+  (config) => {
+    const state = store.getState();
+    const accessToken = state.LoginReducer.token;
 
-//     console.log("accessToken",accessToken);
+    console.log("accessToken", accessToken);
 
-//     if (accessToken) {
-//       config.headers["Authorization"] = `Bearer ${accessToken}`;
-//     }
+    if (accessToken) {
+      config.headers["Authorization"] = `Bearer ${accessToken}`;
+    }
 
-//     return config;
-//   },
-//   (error) => {
-//     return Promise.reject(error);
-//   },
-// );
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  },
+);
 
 const getCurrentTimestamp = () => {
   const now = new Date();
-  const istTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-  );
-  const date = istTime.toLocaleDateString("en-GB");
-  const time = istTime.toLocaleTimeString("en-US", { hour12: true });
+
+  // This MAY or MAY NOT respect the timezone in React Native
+  // It depends on the JavaScript engine (Hermes, JSC, V8)
+  const date = now.toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" });
+  const time = now.toLocaleTimeString("en-US", {
+    timeZone: "Asia/Kolkata",
+    hour12: true,
+  });
+
   return `${date} ${time}`;
 };
 
-export const commonAPICall = async (url, values, get_post) => {
+const ToastFunc = (msg, type) => {
+  const toastType =
+    type.toUpperCase() === "FAILURE" ? "error" : type.toLowerCase();
+
+  Toast.show({
+    message: msg,
+    type: toastType, // 'success', 'error', 'info', 'warning', or 'simple'
+  });
+};
+
+export const commonAPICall = async (url, values, get_post, dispatch) => {
   let msg = null;
   let msgType = null;
   let responseStatus = null;
   let response = null;
   let data = null;
-  const dispatch = useDispatch();
-  console.log("testtt");
-  
-  // dispatch(hideMessage());
   dispatch(showLoader("Loading, Please Wait....."));
+
   try {
     if (
       get_post !== undefined &&
@@ -72,6 +84,8 @@ export const commonAPICall = async (url, values, get_post) => {
     } else {
       response = await myAxios.get(url, values);
     }
+
+    console.log("response----..", response.data);
 
     responseStatus = response.status ?? "unknown status";
     msg =
@@ -97,12 +111,16 @@ export const commonAPICall = async (url, values, get_post) => {
     }
   }
 
-  if (msg.trim() !== "") {
+  // Show message if needed
+  if ((msg || "").trim() !== "") {
     dispatch(showMessage(msg + " [" + getCurrentTimestamp() + "]", msgType));
-    // Toast(msg, msgType);
+    ToastFunc(msg, msgType);
   }
+
+  // ALWAYS hide loader before returning
   dispatch(hideLoader());
-  return { data: data, status: responseStatus };
+
+  return { data, status: responseStatus };
 };
 
 const showNativeMessage = (msg, type) => {

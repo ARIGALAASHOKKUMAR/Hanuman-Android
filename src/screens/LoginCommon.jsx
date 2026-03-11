@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  commonAPICall,
   GENERATE_CAPTCHA,
   LOGIN_END_POINT,
   LOGOUT_END_POINT,
@@ -23,8 +24,12 @@ import {
   myAxiosLogin,
 } from "../utils/utils";
 import { useDispatch } from "react-redux";
-import { login } from "../actions";
-import { showErrorToast, showInfoToast, showSuccessToast } from "../utils/showToast";
+import { hideLoader, login, showLoader } from "../actions";
+import {
+  showErrorToast,
+  showInfoToast,
+  showSuccessToast,
+} from "../utils/showToast";
 
 const LoginCommon = ({ navigation }) => {
   const [username, setUsername] = useState("");
@@ -94,18 +99,11 @@ const LoginCommon = ({ navigation }) => {
   };
 
   const generateCaptcha = async () => {
-    try {
-      const response = await myAxios.get(GENERATE_CAPTCHA);
+      const response = await commonAPICall(GENERATE_CAPTCHA,{},"get",dispatch);
       setCaptchaImage(response?.data?.captcha || "");
       setStoredCaptchaId(response?.data?.captchaId || "");
-    } catch (error) {
-      Alert.alert("Error", "Unable to load captcha");
-    }
   };
 
-  const refreshCaptcha = async () => {
-    await generateCaptcha();
-  };
 
   const logoutUser = async () => {
     try {
@@ -162,7 +160,6 @@ const LoginCommon = ({ navigation }) => {
           loginLocation: response.data.location,
         };
 
-
         dispatch(login(payload));
 
         const currentTime = new Date().getHours();
@@ -199,7 +196,9 @@ const LoginCommon = ({ navigation }) => {
       if (error.response) {
         setCaptchaImage(error.response?.data?.captcha || "");
         setStoredCaptchaId(error.response?.data?.captchaId || "");
-        showErrorToast(error.response?.data?.message || "Please enter valid credentials");
+        showErrorToast(
+          error.response?.data?.message || "Please enter valid credentials",
+        );
       } else {
         showErrorToast(error.message || "Something went wrong");
       }
@@ -331,7 +330,7 @@ const LoginCommon = ({ navigation }) => {
                 )}
 
                 <TouchableOpacity
-                  onPress={refreshCaptcha}
+                  onPress={generateCaptcha}
                   style={styles.refreshBtn}
                 >
                   <Ionicons name="refresh" size={22} color="#3856b5" />
@@ -523,7 +522,8 @@ const styles = StyleSheet.create({
   },
   captchaContainer: {
     flexDirection: "row",
-    alignItems: "center",
+    // alignItems: "center",
+    gap:2,
     marginBottom: 12,
   },
   captchaImage: {

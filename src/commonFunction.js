@@ -5,7 +5,7 @@ export const NewVillages = async (e, setVillage, dispatch, districtCode) => {
   try {
     if (!e) {
       setVillage([]);
-      dispatch(hideLoader());
+  dispatch(hideLoader());
       return;
     }
 
@@ -30,7 +30,7 @@ export const GetNewMandals = async (e, setMandal, setVillage, dispatch) => {
     if (!e) {
       setMandal([]);
       setVillage([]);
-      dispatch(hideLoader());
+  dispatch(hideLoader());
       return;
     }
     const response = await myAxios.get(NEWMANDALS + "zoneCode=" + e);

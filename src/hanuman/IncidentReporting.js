@@ -28,6 +28,7 @@ import {
   createIncident,
   ImageBucket,
 } from "../utils/utils";
+import { useDispatch } from "react-redux";
 
 const IncidentReporting = () => {
   const [ANIMALS, setAnimals] = useState([]);
@@ -139,9 +140,11 @@ const IncidentReporting = () => {
     validateOnBlur: true,
   });
 
+  const dispatch = useDispatch()
+
   const getAnimals = async () => {
     try {
-      const response = await commonAPICall(GETANIMALS, {}, "get");
+      const response = await commonAPICall(GETANIMALS, {}, "get",dispatch);
       if (response.status === 200) {
         setAnimals(response.data.Animal_Master || []);
       }
@@ -155,7 +158,8 @@ const IncidentReporting = () => {
       const response = await commonAPICall(
         `${GETINCIDENTS}?animalId=${animalId}`,
         {},
-        "get"
+        "get",
+        dispatch
       );
       if (response.status === 200) {
         setIncidents(response.data.Animal_Incident_Types || []);
@@ -296,7 +300,8 @@ const IncidentReporting = () => {
           incidentTime: convertToAMPM(incidentFormik.values.incidentTime),
           otp,
         },
-        "POST"
+        "POST",
+        dis
       );
 
       setIsSubmitting(false);

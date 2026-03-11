@@ -32,6 +32,7 @@ import {
 import SessionTime from "./SessionTime";
 import Icon from "react-native-vector-icons/Feather";
 import { Ionicons } from "@expo/vector-icons";
+import UserMessage from "./UserMessage";
 
 const FALLBACK_PROFILE =
   "https://cdn-icons-png.flaticon.com/512/149/149071.png";
@@ -432,6 +433,8 @@ const SiteLayout = ({
           </TouchableOpacity>
         )}
 
+        <UserMessage></UserMessage>
+
         {/* <View style={styles.breadcrumbContainer}>
           <BreadCrumb
             parents={parents || []}
@@ -451,6 +454,9 @@ const SiteLayout = ({
         >
           {children}
         </ScrollView>
+
+        {/* <div className="col-xs-12 col-sm-12 col-lg-12 col-md-12"> */}
+        {/* </div> */}
 
         <View style={styles.bottomNav}>
           <ScrollView
@@ -497,8 +503,9 @@ const SiteLayout = ({
                     <Ionicons
                       name={getIcon(item?.menuitemname)}
                       size={24}
-                      color={ "#555"}
+                      color={"#555"}
                     />
+                    <Text>{item?.menuitemname}</Text>
                   </TouchableOpacity>
                 );
               })}
