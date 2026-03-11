@@ -76,6 +76,9 @@ const SessionChecking = ({ navigation, children }) => {
     navigation,
   ]);
 
+  console.log("passwordSinceUpdated",isLoggedIn, isDefaultPassword, isProfileUpdated, passwordSinceUpdated);
+  
+
   if (!isLoggedIn) {
     return (
       <View style={styles.loaderContainer}>

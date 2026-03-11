@@ -6,13 +6,22 @@ export const initialState = {
 const LoadingReducer = (state = initialState, action) => {
   switch (action.type) {
     case "SHOW_LOADER":
-      return { ...state, loading: true, loadingText: action.payload };
+      return {
+        ...state,
+        loading: true,
+        loadingText:action.payload,
+      };
 
     case "HIDE_LOADER":
-      return { ...state, loading: false };
+      return {
+        ...state,
+        loading: false,
+        loadingText: "",
+      };
 
     default:
       return state;
   }
 };
+
 export default LoadingReducer;

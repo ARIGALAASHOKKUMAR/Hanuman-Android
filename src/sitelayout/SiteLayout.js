@@ -16,6 +16,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
@@ -29,6 +30,8 @@ import {
   myAxios,
 } from "../utils/utils";
 import SessionTime from "./SessionTime";
+import Icon from "react-native-vector-icons/Feather";
+import { Ionicons } from "@expo/vector-icons";
 
 const FALLBACK_PROFILE =
   "https://cdn-icons-png.flaticon.com/512/149/149071.png";
@@ -62,11 +65,11 @@ const SiteLayout = ({
 
   const userName = username || "User";
 
-
   const [profileVisible, setProfileVisible] = useState(false);
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [notificationVisible, setNotificationVisible] = useState(false);
   const [sessionAlertVisible, setSessionAlertVisible] = useState(false);
+  const [profileMenuVisible, setProfileMenuVisible] = useState(false); // New state for profile dropdown
 
   const [bottomMenuVisible, setBottomMenuVisible] = useState(false);
   const [selectedParent, setSelectedParent] = useState(null);
@@ -81,6 +84,11 @@ const SiteLayout = ({
   const lastActivityRef = useRef(Date.now());
   const idlePopupShownRef = useRef(false);
   const appState = useRef(AppState.currentState);
+  const profileButtonRef = useRef(null); // Ref for profile button
+  const [profileMenuPosition, setProfileMenuPosition] = useState({
+    top: 0,
+    left: 0,
+  }); // Position for dropdown
 
   const profileSource = useMemo(() => {
     if (photoPath && typeof photoPath === "string") {
@@ -126,9 +134,6 @@ const SiteLayout = ({
     }
     return false;
   }, [services, currentScreenName]);
-
-
-
 
   const serviceAuthentication = useCallback(async () => {
     try {
@@ -217,6 +222,7 @@ const SiteLayout = ({
   const handleLogout = () => {
     dispatch(logOut());
     setLogoutVisible(false);
+    setProfileMenuVisible(false);
     navigation?.reset?.({
       index: 0,
       routes: [{ name: "Login" }],
@@ -255,9 +261,31 @@ const SiteLayout = ({
     }
   };
 
+  // Modified to show dropdown menu
+  const toggleProfileMenu = () => {
+    resetActivity();
+    // Measure button position for dropdown placement
+    if (profileButtonRef.current) {
+      profileButtonRef.current.measure((x, y, width, height, pageX, pageY) => {
+        setProfileMenuPosition({
+          top: pageY + height + 5,
+          left: pageX + width - 150, // Adjust dropdown width
+        });
+      });
+    }
+    setProfileMenuVisible(!profileMenuVisible);
+  };
+
   const openProfile = () => {
     resetActivity();
     setProfileVisible(true);
+    setProfileMenuVisible(false);
+  };
+
+  const openLogoutPopup = () => {
+    resetActivity();
+    setLogoutVisible(true);
+    setProfileMenuVisible(false);
   };
 
   const openNotifications = () => {
@@ -265,9 +293,8 @@ const SiteLayout = ({
     setNotificationVisible(true);
   };
 
-  const openLogoutPopup = () => {
-    resetActivity();
-    setLogoutVisible(true);
+  const handleBackPress = () => {
+    openLogoutPopup();
   };
 
   const isParentActive = (item) => {
@@ -326,62 +353,72 @@ const SiteLayout = ({
 
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
-      <Pressable style={styles.flex1} onPress={resetActivity}>
+      <StatusBar backgroundColor="#1e7e34" />
+      <Pressable
+        style={styles.flex1}
+        onPress={() => {
+          resetActivity();
+          setProfileMenuVisible(false); // Close dropdown when tapping elsewhere
+        }}
+      >
+        {/* Enhanced Header with Green Theme */}
         <View style={styles.header}>
-          <View style={styles.headerLeftWrap}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.appTitle}>H.A.N.U.M.A.N.</Text>
-              <Text style={styles.welcomeText}>
-                {userName}
-                {roleName ? ` (${roleName})` : ""}
-              </Text>
+          <View style={styles.headerLeft}>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require("../../assets/logo_new.png")}
+                style={styles.headerLogo}
+              />
+              <Text style={styles.headerTitle}>H.A.N.U.M.A.N.</Text>
             </View>
           </View>
 
-          
-          <SessionTime
-            remainingTime={remainingTime}
-            randomTrigger={randomTrigger}
-            navigation={navigation}
-          />
-
           <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={styles.smallActionBtn}
-              onPress={openNotifications}
-            >
-              <Text style={styles.smallActionText}>🔔</Text>
-            </TouchableOpacity>
+            {/* <SessionTime
+              remainingTime={remainingTime}
+              randomTrigger={randomTrigger}
+              navigation={navigation}
+              style={styles.sessionTimeCompact}
+            /> */}
 
             {showProfile && (
               <TouchableOpacity
-                style={styles.smallActionBtn}
-                onPress={openProfile}
+                ref={profileButtonRef}
+                style={styles.headerIconBtn}
+                onPress={toggleProfileMenu}
+                activeOpacity={0.7}
               >
-                <Text style={styles.smallActionText}>👤</Text>
+                <View style={styles.profileImageContainer}>
+                  <Image source={profileSource} style={styles.profileImage} />
+                  <View style={styles.onlineIndicator} />
+                </View>
               </TouchableOpacity>
             )}
+          </View>
+        </View>
 
+        {/* Profile Dropdown Menu */}
+        {profileMenuVisible && (
+          <View style={[styles.profileDropdown, profileMenuPosition]}>
             <TouchableOpacity
-              style={[styles.smallActionBtn, styles.logoutMiniBtn]}
-              onPress={openLogoutPopup}
+              style={styles.dropdownItem}
+              onPress={openProfile}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.smallActionText, styles.logoutMiniText]}>
-                ⏻
-              </Text>
+              <Text style={styles.dropdownIcon}>👤</Text>
+              <Text style={styles.dropdownText}>Profile</Text>
+            </TouchableOpacity>
+            <View style={styles.dropdownDivider} />
+            <TouchableOpacity
+              style={styles.dropdownItem}
+              onPress={openLogoutPopup}
+              activeOpacity={0.7}
+            >
+              <Icon name="log-out" size={24} color="green" />
+              <Text style={styles.dropdownText}> Logout</Text>
             </TouchableOpacity>
           </View>
-        </View>
-
-        <View style={styles.profileStrip}>
-          <View style={styles.profileLeft}>
-            <Image source={profileSource} style={styles.profileImage} />
-            <View style={styles.profileTextContainer}>
-              <Text style={styles.profileName}>{userName}</Text>
-              <Text style={styles.profileRole}>{roleName || "-"}</Text>
-            </View>
-          </View>
-        </View>
+        )}
 
         {activeUsersCount > 0 && (
           <TouchableOpacity
@@ -390,26 +427,23 @@ const SiteLayout = ({
             activeOpacity={0.85}
           >
             <Text style={styles.securityBannerText}>
-              ⚠ Duplicate or suspicious login activity detected for{" "}
-              {activeUsersCount} session(s). Tap to review.
+              ⚠ {activeUsersCount} other active session(s) detected
             </Text>
           </TouchableOpacity>
         )}
 
-        <View style={styles.breadcrumbContainer}>
+        {/* <View style={styles.breadcrumbContainer}>
           <BreadCrumb
             parents={parents || []}
             SERVLETNAME={currentScreenName}
             navigation={navigation}
           />
-        </View>
-
-        <View style={styles.lastLoginContainer}>
-          <Text style={styles.lastLoginText}>
-            Last successful login: {formatSimpleHtmlText(lastLoginTime)}
-          </Text>
-        </View>
-
+          <View style={styles.lastLoginContainer}>
+            <Text style={styles.lastLoginText}>
+              Last login: {formatSimpleHtmlText(lastLoginTime)}
+            </Text>
+          </View>
+        </View> */}
         <ScrollView
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
@@ -424,30 +458,50 @@ const SiteLayout = ({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.bottomNavScroll}
           >
-            {(parents || []).map((item, index) => {
-              const active = isParentActive(item);
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.bottomNavItem,
-                    active && styles.bottomNavItemActive,
-                  ]}
-                  onPress={() => handleParentPress(item)}
-                  activeOpacity={0.85}
-                >
-                  <Text
-                    numberOfLines={1}
+            {(parents || [])
+              .filter(
+                (item) =>
+                  item?.menuitemname === "Home" ||
+                  item?.menuitemname === "User Services" ||
+                  item?.menuitemname === "Services" ||
+                  item?.menuitemname === "Reports",
+              )
+              .map((item, index) => {
+                const active = isParentActive(item);
+
+                const getIcon = (name) => {
+                  switch (name) {
+                    case "Home":
+                      return "home-outline";
+                    case "User Services":
+                      return "people-outline";
+                    case "Services":
+                      return "grid-outline";
+                    case "Reports":
+                      return "document-text-outline";
+                    default:
+                      return "apps-outline";
+                  }
+                };
+
+                return (
+                  <TouchableOpacity
+                    key={index}
                     style={[
-                      styles.bottomNavText,
-                      active && styles.bottomNavTextActive,
+                      styles.bottomNavItem,
+                      active && styles.bottomNavItemActive,
                     ]}
+                    onPress={() => handleParentPress(item)}
+                    activeOpacity={0.85}
                   >
-                    {item?.menuitemname || "Menu"}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+                    <Ionicons
+                      name={getIcon(item?.menuitemname)}
+                      size={24}
+                      color={ "#555"}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
           </ScrollView>
         </View>
 
@@ -602,9 +656,7 @@ const SiteLayout = ({
               <Text style={styles.modalTitle}>Notifications</Text>
 
               <View style={styles.notificationBox}>
-                <Text style={styles.notificationTitle}>
-                  Andhra Pradesh Public Libraries
-                </Text>
+                <Text style={styles.notificationTitle}></Text>
                 <Text style={styles.notificationMsg}>REACT</Text>
                 <Text style={styles.notificationTime}>Just now</Text>
               </View>
@@ -714,66 +766,146 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: "#f2f5ff",
+    backgroundColor: "#f0f7f0", // Light greenish background
   },
+  // Enhanced Header with Green Theme
   header: {
-    backgroundColor: "#4a6cf7",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    backgroundColor: "#9f3398", // Deep green
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
-  headerLeftWrap: {
+  headerLeft: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
   },
-  headerLeft: {
-    flex: 1,
-    paddingRight: 8,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
-  appTitle: {
+  backButtonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 24,
+    fontWeight: "600",
+    lineHeight: 28,
   },
-  welcomeText: {
-    color: "#eaf0ff",
-    fontSize: 12,
-    marginTop: 4,
+  logoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  headerLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 32,
+    marginRight: 8,
+    backgroundColor: "#fff",
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    letterSpacing: 0.5,
+    textShadowColor: "rgba(0,0,0,0.2)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
   },
-  smallActionBtn: {
-    backgroundColor: "#fff",
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
+  sessionTimeCompact: {
+    marginRight: 8,
+  },
+  headerIconBtn: {
     marginLeft: 8,
   },
-  smallActionText: {
+  iconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  headerIconText: {
+    fontSize: 18,
+    color: "#fff",
+  },
+  logoutBtn: {
+    backgroundColor: "transparent",
+  },
+  logoutIconText: {
+    color: "#fff",
+  },
+  // Profile Dropdown Menu
+  profileDropdown: {
+    position: "absolute",
+    width: 150,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 8,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    zIndex: 1000,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  dropdownIcon: {
     fontSize: 16,
+    marginRight: 10,
   },
-  logoutMiniBtn: {
-    backgroundColor: "#fff5f5",
+  dropdownText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
   },
-  logoutMiniText: {
-    color: "#d9534f",
+  dropdownDivider: {
+    height: 1,
+    backgroundColor: "#e0e0e0",
+    marginVertical: 4,
   },
+  // Enhanced Profile Strip
   profileStrip: {
     backgroundColor: "#fff",
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#e7ebf3",
+    borderBottomColor: "#e0f0e0",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: 8,
+    marginHorizontal: 12,
+    borderRadius: 16,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   profileLeft: {
     flexDirection: "row",
@@ -781,55 +913,102 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 10,
   },
+  profileImageContainer: {
+    position: "relative",
+  },
   profileImage: {
-    height: 50,
-    width: 50,
-    borderRadius: 25,
-    backgroundColor: "#ddd",
+    height: 56,
+    width: 56,
+    borderRadius: 28,
+    backgroundColor: "#e8f5e8",
+    borderWidth: 3,
+    borderColor: "#1e7e34",
+  },
+  onlineIndicator: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#4caf50",
+    borderWidth: 2,
+    borderColor: "#fff",
   },
   profileTextContainer: {
     marginLeft: 12,
     flex: 1,
   },
   profileName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
-    color: "#111",
+    color: "#1a3b1a",
   },
   profileRole: {
-    fontSize: 13,
-    color: "#666",
+    fontSize: 14,
+    color: "#4a784a",
     marginTop: 2,
+    fontWeight: "500",
+  },
+  notificationBell: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#f0faf0",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  bellIcon: {
+    fontSize: 20,
+  },
+  notificationDot: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ff4444",
+    borderWidth: 1,
+    borderColor: "#fff",
   },
   securityBanner: {
-    backgroundColor: "#fff1f0",
-    borderColor: "#ffd1cf",
+    backgroundColor: "#fff3e0",
+    borderColor: "#ffb74d",
     borderWidth: 1,
     marginHorizontal: 12,
     marginTop: 10,
-    padding: 12,
+    padding: 10,
     borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
   },
   securityBannerText: {
-    color: "#c0392b",
+    color: "#e65100",
     fontSize: 13,
     fontWeight: "600",
+    flex: 1,
   },
   breadcrumbContainer: {
     backgroundColor: "#fff",
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#e7ebf3",
+    borderBottomColor: "#e0f0e0",
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   lastLoginContainer: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: "#f8faff",
+    backgroundColor: "#f8fff8",
   },
   lastLoginText: {
     fontSize: 12,
-    color: "#6a6a6a",
+    color: "#4a6a4a",
+    fontWeight: "500",
   },
   contentContainer: {
     padding: 16,
@@ -842,9 +1021,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: "#ffffff",
     borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    paddingVertical: 10,
+    borderTopColor: "#d0e8d0",
+    paddingVertical: 7,
     elevation: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   bottomNavScroll: {
     paddingHorizontal: 10,
@@ -855,22 +1038,22 @@ const styles = StyleSheet.create({
     maxWidth: 140,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: "#f3f6ff",
-    borderRadius: 14,
+    borderRadius: 25,
     marginRight: 10,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#e0e7ff",
+    // borderWidth: 1,
+    // backgroundColor: "#1e7e34",
+    // borderColor: "#1e7e34",
   },
   bottomNavItemActive: {
-    backgroundColor: "#4a6cf7",
-    borderColor: "#4a6cf7",
+    // backgroundColor: "#1e7e34",
+    // borderColor: "#1e7e34",
   },
   bottomNavText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#334155",
+    color: "#fff",
   },
   bottomNavTextActive: {
     color: "#fff",
@@ -1015,7 +1198,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     marginTop: 16,
-    backgroundColor: "#4a6cf7",
+    backgroundColor: "#1e7e34",
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",

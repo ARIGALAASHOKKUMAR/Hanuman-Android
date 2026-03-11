@@ -3,8 +3,8 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { useRoute } from "@react-navigation/native";
 import { useTimer } from "react-timer-hook";
-import { FontAwesome } from "@expo/vector-icons";
 import { CommonLogout } from "../utils/CommonFunctions";
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 
 const SessionTime = ({ remainingTime = 0, randomTrigger = 0, navigation }) => {
@@ -17,7 +17,7 @@ const SessionTime = ({ remainingTime = 0, randomTrigger = 0, navigation }) => {
   const sessionTimeInfo = () => {
     Alert.alert(
       "Session Info",
-      "If the app is idle for 59 or more minutes, the session will expire automatically."
+      "If the app is idle for 59 or more minutes, the session will expire automatically.",
     );
   };
 
@@ -38,7 +38,7 @@ const SessionTime = ({ remainingTime = 0, randomTrigger = 0, navigation }) => {
         token,
         navigation,
         "s",
-        "SESSIONTIMEDOUT"
+        "SESSIONTIMEDOUT",
       );
     },
   });
@@ -55,9 +55,23 @@ const SessionTime = ({ remainingTime = 0, randomTrigger = 0, navigation }) => {
 
   return (
     <TouchableOpacity onPress={sessionTimeInfo} activeOpacity={0.8}>
-      <View style={styles.container}>
-        <FontAwesome name="clock-o" size={16} color="#2747c7" />
-        <Text style={styles.text}>{"  "}{hh}:{mm}:{ss}</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          borderWidth: 2,
+          borderColor: "white",
+          justifyContent: "center",
+          alignItems: "center",
+          borderRadius: 10,
+          padding: 3,
+        }}
+      >
+        <Icon name="access-time" size={16} color="white" />
+        <Text style={styles.text}>
+          {"  "}
+          {hh}:{mm}:{ss}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -66,21 +80,9 @@ const SessionTime = ({ remainingTime = 0, randomTrigger = 0, navigation }) => {
 export default SessionTime;
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#f6f8ff",
-    borderWidth: 1,
-    borderColor: "#dde5ff",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    minWidth: 120,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-  },
   text: {
     fontSize: 13,
-    color: "#2747c7",
+    color: "white",
     fontWeight: "700",
   },
 });

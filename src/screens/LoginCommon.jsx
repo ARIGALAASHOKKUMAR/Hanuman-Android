@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  Button
+  Button,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -24,7 +24,7 @@ import {
 } from "../utils/utils";
 import { useDispatch } from "react-redux";
 import { login } from "../actions";
-
+import { showErrorToast, showInfoToast, showSuccessToast } from "../utils/showToast";
 
 const LoginCommon = ({ navigation }) => {
   const [username, setUsername] = useState("");
@@ -162,6 +162,7 @@ const LoginCommon = ({ navigation }) => {
           loginLocation: response.data.location,
         };
 
+
         dispatch(login(payload));
 
         const currentTime = new Date().getHours();
@@ -178,14 +179,12 @@ const LoginCommon = ({ navigation }) => {
             "Good evening! End your day with the wisdom of a good book!";
         }
 
-        Alert.alert("Success", welcomeMsg);
-
+        showSuccessToast(welcomeMsg);
         if (
           parseInt(response?.data?.passwordSinceUpdated) >= 85 &&
           parseInt(response?.data?.passwordSinceUpdated) < 90
         ) {
-          Alert.alert(
-            "Warning",
+          showInfoToast(
             `Your password will expire in ${
               90 - response.data.passwordSinceUpdated
             } days. Please update it soon.`,
@@ -194,18 +193,15 @@ const LoginCommon = ({ navigation }) => {
 
         navigation.navigate("HOME");
       } else {
-        Alert.alert("Error", "Please enter valid credentials");
+        showErrorToast("Please enter valid credentials");
       }
     } catch (error) {
       if (error.response) {
         setCaptchaImage(error.response?.data?.captcha || "");
         setStoredCaptchaId(error.response?.data?.captchaId || "");
-        Alert.alert(
-          "Login Failed",
-          error.response?.data?.message || "Please enter valid credentials",
-        );
+        showErrorToast(error.response?.data?.message || "Please enter valid credentials");
       } else {
-        Alert.alert("Error", error.message || "Something went wrong");
+        showErrorToast(error.message || "Something went wrong");
       }
 
       console.log("Error during authentication:", error);
@@ -321,22 +317,17 @@ const LoginCommon = ({ navigation }) => {
               ) : null}
             </View>
 
-            <View style={styles.fieldBlock}>
+            <View>
               <Text style={styles.label}>Captcha</Text>
-
               <View style={styles.captchaContainer}>
                 {captchaImage ? (
                   <Image
                     source={{ uri: captchaImage }}
                     style={styles.captchaImage}
-                    resizeMode="fill"
+                    resizeMode="contain"
                   />
                 ) : (
-                  <View
-                    style={[styles.captchaImage, styles.captchaPlaceholder]}
-                  >
-                    <Text style={styles.captchaPlaceholderText}>Captcha</Text>
-                  </View>
+                  <Text>Captcha</Text>
                 )}
 
                 <TouchableOpacity
@@ -346,7 +337,6 @@ const LoginCommon = ({ navigation }) => {
                   <Ionicons name="refresh" size={22} color="#3856b5" />
                 </TouchableOpacity>
               </View>
-
               <View
                 style={[
                   styles.inputWrapper,
@@ -538,11 +528,9 @@ const styles = StyleSheet.create({
   },
   captchaImage: {
     flex: 1,
-    height: 60,
-    backgroundColor: "#f8faff",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#dbe4ff",
+    height: 50,
+    // backgroundColor: "#f8faff",
+    // borderColor: "#dbe4ff",
   },
   captchaPlaceholder: {
     justifyContent: "center",

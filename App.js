@@ -7,11 +7,15 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginCommon from "./src/screens/LoginCommon";
 import HomeScreen from "./src/screens/HomeScreen";
 
-
 import { persistedStore, store } from "./src/reducers/allReducers";
 import SessionChecking from "./src/sitelayout/SessionChecking";
 import SiteLayout from "./src/sitelayout/SiteLayout";
 import IncidentReporting from "./src/hanuman/IncidentReporting";
+import ChangePassword from "./src/sitelayout/ChangePassword";
+import ProfileUpdate from "./src/sitelayout/ProfileUpdate";
+import Toast from "react-native-toast-message";
+import ModalPopup from "./src/sitelayout/ModalPopup";
+import Overlay from "./src/sitelayout/Overlay";
 
 const Stack = createNativeStackNavigator();
 
@@ -20,14 +24,40 @@ export default function App() {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistedStore}>
         <NavigationContainer>
+          <ModalPopup />
+          <Overlay/>
           <Stack.Navigator
             initialRouteName="Login"
             screenOptions={{ headerShown: false }}
           >
             {/* Login Screen */}
             <Stack.Screen name="Login" component={LoginCommon} />
-            <Stack.Screen name="IncidentReporting" component={IncidentReporting} />
+            <Stack.Screen
+              name="IncidentReporting"
+              component={IncidentReporting}
+            />
+            {/* <Stack.Screen name="ProfileUpdate" component={ProfileUpdate} /> */}
 
+            <Stack.Screen name="ProfileUpdate">
+              {(props) => (
+                <SiteLayout
+                  navigation={props.navigation}
+                  currentScreenName="ProfileUpdate"
+                >
+                  <ProfileUpdate {...props} />
+                </SiteLayout>
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="ChangePassword">
+              {(props) => (
+                <SiteLayout
+                  navigation={props.navigation}
+                  currentScreenName="ChangePassword"
+                >
+                  <ChangePassword {...props} />
+                </SiteLayout>
+              )}
+            </Stack.Screen>
             {/* Protected HOME Screen */}
             <Stack.Screen name="HOME">
               {(props) => (
@@ -42,6 +72,7 @@ export default function App() {
               )}
             </Stack.Screen>
           </Stack.Navigator>
+          <Toast />
         </NavigationContainer>
       </PersistGate>
     </Provider>

@@ -19,8 +19,15 @@ import * as ImagePicker from "expo-image-picker";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Ionicons } from "@expo/vector-icons";
-import { commonAPICall, CONTEXT_HEADING, GETANIMALS, GETINCIDENTS, VOLUNTEERMOBILEOTP } from "../utils/utils";
-
+import {
+  commonAPICall,
+  CONTEXT_HEADING,
+  GETANIMALS,
+  GETINCIDENTS,
+  VOLUNTEERMOBILEOTP,
+  createIncident,
+  ImageBucket,
+} from "../utils/utils";
 
 const IncidentReporting = () => {
   const [ANIMALS, setAnimals] = useState([]);
@@ -31,6 +38,7 @@ const IncidentReporting = () => {
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpValues, setOtpValues] = useState(["", "", "", "", "", ""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState(null);
 
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState([]);
@@ -98,7 +106,7 @@ const IncidentReporting = () => {
           return value && value.trim() !== "";
         }
         return true;
-      },
+      }
     ),
     incidentPhotos: Yup.array()
       .of(Yup.string().required("Photo is required"))
@@ -147,7 +155,7 @@ const IncidentReporting = () => {
       const response = await commonAPICall(
         `${GETINCIDENTS}?animalId=${animalId}`,
         {},
-        "get",
+        "get"
       );
       if (response.status === 200) {
         setIncidents(response.data.Animal_Incident_Types || []);
@@ -207,7 +215,7 @@ const IncidentReporting = () => {
       const response = await commonAPICall(
         VOLUNTEERMOBILEOTP + mobileNo,
         {},
-        "post",
+        "post"
       );
       setIsSubmitting(false);
 
@@ -231,7 +239,6 @@ const IncidentReporting = () => {
   const handleOtpChange = (index, value) => {
     const cleaned = value.replace(/[^0-9]/g, "");
 
-    // supports typing/pasting multiple digits
     if (cleaned.length > 1) {
       const digits = cleaned.slice(0, 6).split("");
       const newOtpValues = [...otpValues];
@@ -289,7 +296,7 @@ const IncidentReporting = () => {
           incidentTime: convertToAMPM(incidentFormik.values.incidentTime),
           otp,
         },
-        "POST",
+        "POST"
       );
 
       setIsSubmitting(false);
@@ -348,27 +355,64 @@ const IncidentReporting = () => {
     return labels[field] || field;
   };
 
-  // Replace this with your actual RN upload logic.
-  // Web ImageBucket uses DOM file events, so it won't work in React Native directly.
-  const uploadImageToBucket = async (localUri) => {
-    // TODO:
-    // 1. create FormData
-    // 2. call your upload API
-    // 3. return uploaded image URL
-    // For now it returns local URI so UI can work.
-    return localUri;
-  };
-
-  const pickImage = async (index) => {
+  const uploadImageUsingImageBucket = async (asset, index) => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert("Permission", "Gallery permission is required");
+      setUploadingIndex(index);
+
+      const fileName =
+        asset.fileName ||
+        asset.uri?.split("/").pop() ||
+        `incident_${Date.now()}.jpg`;
+
+      const extension = fileName.split(".").pop()?.toLowerCase();
+
+      if (!["jpg", "jpeg", "png", "webp"].includes(extension)) {
+        Alert.alert("Warning", "Please select only image files");
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
+      const rnFile = {
+        uri: asset.uri,
+        name: fileName,
+        type:
+          extension === "png"
+            ? "image/png"
+            : extension === "webp"
+              ? "image/webp"
+              : "image/jpeg",
+      };
+
+      const mockEvent = {
+        target: {
+          files: [rnFile],
+          value: null,
+        },
+      };
+
+      const path = "APFD/SAWMILLS/";
+      const fieldName = `incidentPhotos[${index}]`;
+
+      await ImageBucket(mockEvent, incidentFormik, path, fieldName, "20971520");
+
+      incidentFormik.setFieldTouched("incidentPhotos", true);
+    } catch (error) {
+      Alert.alert("Error", "Image upload failed");
+    } finally {
+      setUploadingIndex(null);
+    }
+  };
+
+  const openCamera = async (index) => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert("Permission", "Camera permission is required");
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
         allowsEditing: false,
       });
@@ -378,14 +422,53 @@ const IncidentReporting = () => {
       const asset = result.assets?.[0];
       if (!asset?.uri) return;
 
-      const uploadedUrl = await uploadImageToBucket(asset.uri);
+      await uploadImageUsingImageBucket(asset, index);
+    } catch (error) {
+      Alert.alert("Error", "Unable to open camera");
+    }
+  };
 
-      const updatedPhotos = [...incidentFormik.values.incidentPhotos];
-      updatedPhotos[index] = uploadedUrl;
-      incidentFormik.setFieldValue("incidentPhotos", updatedPhotos);
+  const openGallery = async (index) => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert("Permission", "Gallery permission is required");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        allowsEditing: false,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets?.[0];
+      if (!asset?.uri) return;
+
+      await uploadImageUsingImageBucket(asset, index);
     } catch (error) {
       Alert.alert("Error", "Unable to pick image");
     }
+  };
+
+  const pickImage = (index) => {
+    Alert.alert("Upload Photo", "Choose image source", [
+      {
+        text: "Camera",
+        onPress: () => openCamera(index),
+      },
+      {
+        text: "Gallery",
+        onPress: () => openGallery(index),
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ]);
   };
 
   const addPhotoField = () => {
@@ -429,7 +512,6 @@ const IncidentReporting = () => {
           <Text style={styles.title}>Multi Species Incident Reporting</Text>
           <Text style={styles.subTitle}>{CONTEXT_HEADING}</Text>
 
-          {/* Animal */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Animal Involved *</Text>
             <View style={styles.pickerWrapper}>
@@ -456,7 +538,6 @@ const IncidentReporting = () => {
             {renderError("animalId")}
           </View>
 
-          {/* Animal Count */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Animal Count *</Text>
             <TextInput
@@ -465,7 +546,7 @@ const IncidentReporting = () => {
               onChangeText={(text) =>
                 incidentFormik.setFieldValue(
                   "animalCount",
-                  text.replace(/[^0-9]/g, ""),
+                  text.replace(/[^0-9]/g, "")
                 )
               }
               onBlur={() => incidentFormik.setFieldTouched("animalCount", true)}
@@ -476,7 +557,6 @@ const IncidentReporting = () => {
             {renderError("animalCount")}
           </View>
 
-          {/* Location Type */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Location Type *</Text>
             <View style={styles.pickerWrapper}>
@@ -525,7 +605,6 @@ const IncidentReporting = () => {
             </View>
           )}
 
-          {/* Incident Type */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Incident Type *</Text>
             <View style={styles.pickerWrapper}>
@@ -549,7 +628,6 @@ const IncidentReporting = () => {
             {renderError("incidentTypeId")}
           </View>
 
-          {/* Date */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Date of Incident *</Text>
             <TouchableOpacity
@@ -564,7 +642,6 @@ const IncidentReporting = () => {
             {renderError("incidentDate")}
           </View>
 
-          {/* Time */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Time of Incident *</Text>
             <TouchableOpacity
@@ -579,7 +656,6 @@ const IncidentReporting = () => {
             {renderError("incidentTime")}
           </View>
 
-          {/* Latitude */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Latitude *</Text>
             {pageLoading ? (
@@ -597,7 +673,6 @@ const IncidentReporting = () => {
             {renderError("latitude")}
           </View>
 
-          {/* Longitude */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Longitude *</Text>
             {pageLoading ? (
@@ -615,7 +690,6 @@ const IncidentReporting = () => {
             {renderError("longitude")}
           </View>
 
-          {/* Severity */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Severity of Categorization *</Text>
             <View style={styles.pickerWrapper}>
@@ -636,7 +710,6 @@ const IncidentReporting = () => {
             {renderError("severityOfUrgency")}
           </View>
 
-          {/* Landmark */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Landmark *</Text>
             <TextInput
@@ -651,7 +724,6 @@ const IncidentReporting = () => {
             {renderError("landmark")}
           </View>
 
-          {/* Address fields replacing CommmonAddressOpen */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>District *</Text>
             <TextInput
@@ -694,7 +766,6 @@ const IncidentReporting = () => {
             {renderError("village")}
           </View>
 
-          {/* Mobile */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Mobile No *</Text>
             <TextInput
@@ -703,7 +774,7 @@ const IncidentReporting = () => {
               onChangeText={(text) =>
                 incidentFormik.setFieldValue(
                   "mobileNo",
-                  text.replace(/[^0-9]/g, ""),
+                  text.replace(/[^0-9]/g, "")
                 )
               }
               onBlur={() => incidentFormik.setFieldTouched("mobileNo", true)}
@@ -715,7 +786,6 @@ const IncidentReporting = () => {
             {renderError("mobileNo")}
           </View>
 
-          {/* Photos */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Upload Incident Photos *</Text>
 
@@ -724,11 +794,18 @@ const IncidentReporting = () => {
                 <TouchableOpacity
                   style={styles.uploadButton}
                   onPress={() => pickImage(index)}
+                  disabled={uploadingIndex === index}
                 >
-                  <Ionicons name="image-outline" size={18} color="#fff" />
-                  <Text style={styles.uploadButtonText}>
-                    {image ? "Change Photo" : "Choose Photo"}
-                  </Text>
+                  {uploadingIndex === index ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="camera-outline" size={18} color="#fff" />
+                      <Text style={styles.uploadButtonText}>
+                        {image ? "Change Photo" : "Camera / Gallery"}
+                      </Text>
+                    </>
+                  )}
                 </TouchableOpacity>
 
                 {image ? (
@@ -769,7 +846,6 @@ const IncidentReporting = () => {
             ) : null}
           </View>
 
-          {/* Description */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Description / Notes *</Text>
             <TextInput
@@ -815,7 +891,6 @@ const IncidentReporting = () => {
         </View>
       </ScrollView>
 
-      {/* Date Picker */}
       {showDatePicker && (
         <DateTimePicker
           value={
@@ -831,14 +906,13 @@ const IncidentReporting = () => {
             if (selectedDate) {
               incidentFormik.setFieldValue(
                 "incidentDate",
-                formatDateForInput(selectedDate),
+                formatDateForInput(selectedDate)
               );
             }
           }}
         />
       )}
 
-      {/* Time Picker */}
       {showTimePicker && (
         <DateTimePicker
           value={new Date()}
@@ -850,14 +924,13 @@ const IncidentReporting = () => {
             if (selectedTime) {
               incidentFormik.setFieldValue(
                 "incidentTime",
-                formatTimeForInput(selectedTime),
+                formatTimeForInput(selectedTime)
               );
             }
           }}
         />
       )}
 
-      {/* Validation Modal */}
       <Modal
         visible={showValidationModal}
         transparent
@@ -897,7 +970,6 @@ const IncidentReporting = () => {
         </View>
       </Modal>
 
-      {/* OTP Modal */}
       <Modal
         visible={showOtpModal}
         transparent
@@ -908,7 +980,8 @@ const IncidentReporting = () => {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Enter OTP</Text>
             <Text style={styles.modalSubTitle}>
-              Please enter the 6-digit OTP sent to {incidentFormik.values.mobileNo}
+              Please enter the 6-digit OTP sent to{" "}
+              {incidentFormik.values.mobileNo}
             </Text>
 
             <View style={styles.otpRow}>
@@ -1073,11 +1146,13 @@ const styles = StyleSheet.create({
   uploadButton: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#3856b5",
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 10,
     flex: 1,
+    minHeight: 48,
   },
   uploadButtonText: {
     color: "#fff",

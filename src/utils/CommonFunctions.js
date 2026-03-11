@@ -190,6 +190,9 @@ export const generateCaptcha = async (
   setCaptchaImage,
   setCount
 ) => {
+
+  console.log("testtasaja");
+  
   try {
     const response = await commonAPICall(GENERATE_CAPTCHA, {}, "get");
     if (response?.status === 200) {

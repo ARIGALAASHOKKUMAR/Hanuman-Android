@@ -1,12 +1,19 @@
 import axios from "axios";
 import { Alert } from "react-native";
 import { store } from "../reducers/allReducers";
+import { useDispatch } from "react-redux";
+import { hideMessage, showLoader } from "../actions";
 
 export const base_url = "https://swapi.dev.nidhi.apcfss.in/apsawmills";
 
+const state = store.getState();
+const accessToken = state.LoginReducer.token;
+
 export const myAxios = axios.create({
   baseURL: base_url,
-  headers: {},
+  headers: {
+    Authorization: accessToken ? `Bearer ${accessToken}` : "",
+  },
 });
 
 export const myAxiosLogin = axios.create({
@@ -14,26 +21,28 @@ export const myAxiosLogin = axios.create({
   headers: {},
 });
 
-myAxios.interceptors.request.use(
-  (config) => {
-    const state = store.getState();
-    const accessToken = state.LoginReducer.token;
+// myAxios.interceptors.request.use(
+//   (config) => {
+//     const state = store.getState();
+//     const accessToken = state.LoginReducer.token;
 
-    if (accessToken) {
-      config.headers["Authorization"] = `Bearer ${accessToken}`;
-    }
+//     console.log("accessToken",accessToken);
 
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  },
-);
+//     if (accessToken) {
+//       config.headers["Authorization"] = `Bearer ${accessToken}`;
+//     }
+
+//     return config;
+//   },
+//   (error) => {
+//     return Promise.reject(error);
+//   },
+// );
 
 const getCurrentTimestamp = () => {
   const now = new Date();
   const istTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
   );
   const date = istTime.toLocaleDateString("en-GB");
   const time = istTime.toLocaleTimeString("en-US", { hour12: true });
@@ -46,7 +55,11 @@ export const commonAPICall = async (url, values, get_post) => {
   let responseStatus = null;
   let response = null;
   let data = null;
-
+  const dispatch = useDispatch();
+  console.log("testtt");
+  
+  // dispatch(hideMessage());
+  dispatch(showLoader("Loading, Please Wait....."));
   try {
     if (
       get_post !== undefined &&
@@ -75,8 +88,8 @@ export const commonAPICall = async (url, values, get_post) => {
         error.response.data?.message === ""
           ? ""
           : error.response.data?.message
-          ? `${error.response.data.message} (${error.response.data.status})`
-          : "An error occurred";
+            ? `${error.response.data.message} (${error.response.data.status})`
+            : "An error occurred";
       responseStatus = error.response.status;
     } else {
       msg = `An unexpected error occurred: ${error.message}`;
@@ -84,10 +97,11 @@ export const commonAPICall = async (url, values, get_post) => {
     }
   }
 
-  if (msg && msg.trim() !== "") {
-    showNativeMessage(`${msg} [${getCurrentTimestamp()}]`, msgType);
+  if (msg.trim() !== "") {
+    dispatch(showMessage(msg + " [" + getCurrentTimestamp() + "]", msgType));
+    // Toast(msg, msgType);
   }
-
+  dispatch(hideLoader());
   return { data: data, status: responseStatus };
 };
 
@@ -407,8 +421,8 @@ export const GETDASHBOARDCOUNTS = "/api/open/incident-dashboard";
 export const ACCEPTINCIDENT = "/api/open/createIncident";
 export const RESOLUTIONTYPES = "/api/user/resolution-types";
 export const HANAUMANDYCMDASHBOARD = "/api/open/getHanumanDashboardData";
-export const VOLUNTEEROTP = "/api/open/volunteer/send-otp?mobile="
-export const RANGEMANDAL = "api/user/createRangeWiseDistrictMandalMapping"
-export const GAZETTECIRCLEDATA = "api/user/gazette/circle-dashboard"
-export const GAZETTEDIVISIONDATA = "api/user/gazette/division-dashboard"
-export const GAZETTEBLOCKWISEDATA = "api/user/gazette/block-dashboard"
+export const VOLUNTEEROTP = "/api/open/volunteer/send-otp?mobile=";
+export const RANGEMANDAL = "api/user/createRangeWiseDistrictMandalMapping";
+export const GAZETTECIRCLEDATA = "api/user/gazette/circle-dashboard";
+export const GAZETTEDIVISIONDATA = "api/user/gazette/division-dashboard";
+export const GAZETTEBLOCKWISEDATA = "api/user/gazette/block-dashboard";
