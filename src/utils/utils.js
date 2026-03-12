@@ -85,7 +85,7 @@ export const commonAPICall = async (url, values, get_post, dispatch) => {
       response = await myAxios.get(url, values);
     }
 
-    console.log("response----..", response.data);
+    // console.log("response----..", response.data);
 
     responseStatus = response.status ?? "unknown status";
     msg =
