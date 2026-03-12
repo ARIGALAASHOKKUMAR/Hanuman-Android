@@ -21,7 +21,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import BreadCrumb from "./BreadCrumb";
-import { hideLoader, hideMessage, logOut, showModal } from "../actions";
+import { hideLoader, hideMessage, logOut, showModal, hideModal } from "../actions";
 import {
   LOGOUT_ALL_END_POINT,
   LOGOUT_ALL_EXCEPT_THIS_END_POINT,
@@ -35,6 +35,7 @@ import { Ionicons } from "@expo/vector-icons";
 import UserMessage from "./UserMessage";
 import { showSuccessToast } from "../utils/showToast";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import IconFA from "react-native-vector-icons/FontAwesome";
 
 const FALLBACK_PROFILE =
   "https://cdn-icons-png.flaticon.com/512/149/149071.png";
@@ -72,7 +73,7 @@ const SiteLayout = ({
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [notificationVisible, setNotificationVisible] = useState(false);
   const [sessionAlertVisible, setSessionAlertVisible] = useState(false);
-  const [profileMenuVisible, setProfileMenuVisible] = useState(false); // New state for profile dropdown
+  const [profileMenuVisible, setProfileMenuVisible] = useState(false);
 
   const [bottomMenuVisible, setBottomMenuVisible] = useState(false);
   const [selectedParent, setSelectedParent] = useState(null);
@@ -84,14 +85,14 @@ const SiteLayout = ({
   const [sessionDetails, setSessionDetails] = useState("");
   const [remainingTime, setRemainingTime] = useState(0);
 
-  const lastActivityRef = useRef(Date.now());
+  const [lastActivity, setLastActivity] = useState(Date.now());
   const idlePopupShownRef = useRef(false);
   const appState = useRef(AppState.currentState);
-  const profileButtonRef = useRef(null); // Ref for profile button
+  const profileButtonRef = useRef(null);
   const [profileMenuPosition, setProfileMenuPosition] = useState({
     top: 0,
     left: 0,
-  }); // Position for dropdown
+  });
 
   const profileSource = useMemo(() => {
     if (photoPath && typeof photoPath === "string") {
@@ -115,7 +116,7 @@ const SiteLayout = ({
   };
 
   const resetActivity = useCallback(() => {
-    lastActivityRef.current = Date.now();
+    setLastActivity(Date.now());
     idlePopupShownRef.current = false;
   }, []);
 
@@ -174,15 +175,8 @@ const SiteLayout = ({
         const serverSessionDetails =
           response?.data?.activeusers?.sessionDetails || "";
 
-        // Always update the count - this will show/hide the banner automatically
         setActiveUsersCount(activeCount);
         setSessionDetails(serverSessionDetails);
-
-        // Only show the alert modal when user clicks the banner
-        // Don't automatically set sessionAlertVisible true
-        // if (activeCount > 0) {
-        //   setSessionAlertVisible(true); // Remove this line to not auto-show modal
-        // }
       }
     } catch (error) {
       const message =
@@ -197,18 +191,78 @@ const SiteLayout = ({
     }
   }, []);
 
+  // Idle Timeout Effect
   useEffect(() => {
-    // Clear any existing interval first
+    const resetActivityTimeout = () => {
+      setLastActivity(Date.now());
+      idlePopupShownRef.current = false;
+    };
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        resetActivityTimeout();
+      }
+      appState.current = nextAppState;
+    });
+
+    const intervalId = setInterval(() => {
+      if (Date.now() - lastActivity >= 1 * 60 * 1000 && !idlePopupShownRef.current) {
+        showLogoutPopupWarning();
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+      subscription.remove();
+    };
+  }, [lastActivity, dispatch]);
+
+  const showLogoutPopupWarning = () => {
+    idlePopupShownRef.current = true;
+    
+    dispatch(
+      showModal(
+        <View style={styles.idleModalContent}>
+          <Text style={styles.idleModalIcon}>⚠️</Text>
+          <Text style={styles.idleModalText}>
+            It seems you've been idle for more than 15 minutes. Click 'Stay Connected' to stay logged in or 'Logout' to log out.
+          </Text>
+          <View style={styles.idleModalButtons}>
+            <TouchableOpacity
+              style={[styles.idleButton, styles.logoutButton]}
+              onPress={handleLogout}
+            >
+              <IconFA name="power-off" size={16} color="black" />
+              <Text style={styles.buttonText}> Logout</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.idleButton, styles.stayConnectedButton]}
+              onPress={() => {
+                serviceAuthentication();
+                idlePopupShownRef.current = false;
+                dispatch(hideModal());
+                resetActivity()
+              }}
+            >
+              <IconFA name="check" size={16} color="black" />
+              <Text style={styles.buttonText}> Stay Connected</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )
+    );
+  };
+
+  useEffect(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
 
-    // Set up new interval
     intervalRef.current = setInterval(() => {
       concurrentLoginDetection();
     }, 3000);
 
-    // Cleanup on unmount
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -220,42 +274,16 @@ const SiteLayout = ({
     serviceAuthentication();
   }, []);
 
-  // Optional: If you want to stop the interval when the user views the session details
-  // You can add this effect to clear interval when modal is open
   useEffect(() => {
     if (sessionAlertVisible && intervalRef.current) {
-      // Optionally pause interval when modal is open to save resources
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     } else if (!sessionAlertVisible && !intervalRef.current) {
-      // Restart interval when modal closes
       intervalRef.current = setInterval(() => {
         concurrentLoginDetection();
       }, 3000);
     }
   }, [sessionAlertVisible]);
-
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === "active"
-      ) {
-        serviceAuthentication();
-        resetActivity();
-      }
-      appState.current = nextAppState;
-    };
-
-    const subscription = AppState.addEventListener(
-      "change",
-      handleAppStateChange,
-    );
-
-    return () => {
-      subscription.remove();
-    };
-  }, [serviceAuthentication, resetActivity]);
 
   useEffect(() => {
     if (!serviceChecking()) {
@@ -271,6 +299,7 @@ const SiteLayout = ({
     dispatch(logOut());
     setLogoutVisible(false);
     setProfileMenuVisible(false);
+    dispatch(hideModal());
     navigation?.reset?.({
       index: 0,
       routes: [{ name: "Login" }],
@@ -308,16 +337,13 @@ const SiteLayout = ({
     }
   };
 
-  // Modified to show dropdown menu
   const toggleProfileMenu = () => {
     resetActivity();
-    // Measure button position for dropdown placement
     if (profileButtonRef.current) {
       profileButtonRef.current.measure((x, y, width, height, pageX, pageY) => {
         setProfileMenuPosition({
           top: 62,
-          right:5
-          // left: pageX + width - 150, // Adjust dropdown width
+          right: 5,
         });
       });
     }
@@ -399,6 +425,16 @@ const SiteLayout = ({
     }
   };
 
+  const [blink, setBlink] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBlink((prev) => !prev);
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
       <StatusBar backgroundColor="#1e7e34" />
@@ -406,36 +442,35 @@ const SiteLayout = ({
         style={styles.flex1}
         onPress={() => {
           resetActivity();
-          setProfileMenuVisible(false); // Close dropdown when tapping elsewhere
+          setProfileMenuVisible(false);
         }}
       >
-        {/* Enhanced Header with Green Theme */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.logoContainer}>
-              {/* <Image
-                source={require("../../assets/logo_new.png")}
-                style={styles.headerLogo}
-              /> */}
-              {/* <Text> */}
               <Text style={styles.headerTitle}>
-                H.A.N.U.M.A.N.{"\n"}
-                <Text style={styles.username}>Welcome:{username}</Text>
-              </Text>{" "}
+                H.A.N.U.M.A.N.
+              </Text>
+              <Text style={styles.username}>Welcome: {username}</Text>
             </View>
           </View>
 
-          <View style={styles.iconWrapper}>
-            <MaterialCommunityIcons
-              name="incognito"
-              size={15}
-              color="#374151"
-            />
-
-            {/* <View style={styles.badge}>
-              <Text style={styles.badgeText}>3</Text>
-            </View> */}
-          </View>
+          {activeUsersCount > 0 && (
+            <TouchableOpacity
+              style={styles.iconWrapper}
+              onPress={() => setSessionAlertVisible(true)}
+            >
+              <MaterialCommunityIcons
+                name="incognito"
+                size={24}
+                color="#374151"
+                style={[blink && styles.blinkIcon]}
+              />
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{activeUsersCount}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
           <View style={styles.headerRight}>
             <SessionTime
               remainingTime={remainingTime}
@@ -460,7 +495,6 @@ const SiteLayout = ({
           </View>
         </View>
 
-        {/* Profile Dropdown Menu */}
         {profileMenuVisible && (
           <View style={[styles.profileDropdown, profileMenuPosition]}>
             <TouchableOpacity
@@ -521,42 +555,17 @@ const SiteLayout = ({
           </View>
         )}
 
-        <UserMessage></UserMessage>
+        <UserMessage />
 
-        {activeUsersCount > 0 && (
-          <TouchableOpacity
-            style={styles.securityBanner}
-            onPress={() => setSessionAlertVisible(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.securityBannerText}>
-              ⚠ {activeUsersCount} other active session(s) detected
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {/* <View style={styles.breadcrumbContainer}>
-          <BreadCrumb
-            parents={parents || []}
-            SERVLETNAME={currentScreenName}
-            navigation={navigation}
-          />
-          <View style={styles.lastLoginContainer}>
-            <Text style={styles.lastLoginText}>
-              Last login: {formatSimpleHtmlText(lastLoginTime)}
-            </Text>
-          </View>
-        </View> */}
         <ScrollView
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
           onScrollBeginDrag={resetActivity}
+          onTouchStart={resetActivity}
+          onMomentumScrollBegin={resetActivity}
         >
           {children}
         </ScrollView>
-
-        {/* <div className="col-xs-12 col-sm-12 col-lg-12 col-md-12"> */}
-        {/* </div> */}
 
         <View style={styles.bottomNav}>
           <View
@@ -565,11 +574,8 @@ const SiteLayout = ({
               flexDirection: "row",
               justifyContent: "space-around",
               width: "100%",
-              gap:0.5
+              gap: 0.5,
             }}
-            // horizontal
-            // showsHorizontalScrollIndicator={false}
-            // contentContainerStyle={styles.bottomNavScroll}
           >
             {(parents || [])
               .filter(
@@ -884,11 +890,9 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    // backgroundColor: "white", // Light greenish background
   },
-  // Enhanced Header with Green Theme
   header: {
-    backgroundColor: "white", // Deep green
+    backgroundColor: "white",
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: "row",
@@ -921,8 +925,8 @@ const styles = StyleSheet.create({
     lineHeight: 28,
   },
   logoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: "column",
+    alignItems: "flex-start",
     flex: 1,
   },
   headerLogo: {
@@ -940,6 +944,7 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.2)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
+    marginBottom: 4,
   },
   headerTitle2: {
     color: "green",
@@ -978,7 +983,6 @@ const styles = StyleSheet.create({
   logoutIconText: {
     color: "#fff",
   },
-  // Profile Dropdown Menu
   profileDropdown: {
     position: "absolute",
     width: 150,
@@ -1013,7 +1017,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#e0e0e0",
     marginVertical: 4,
   },
-  // Enhanced Profile Strip
   profileStrip: {
     backgroundColor: "#fff",
     paddingHorizontal: 16,
@@ -1060,39 +1063,31 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#fff",
   },
-  // iconContainer: {
-  //   width: 36,
-  //   height: 36,
-  //   borderRadius: 18, // makes it circular
-  //   justifyContent: "center",
-  //   alignItems: "center",
-  // },
   iconWrapper: {
     position: "relative",
-    width: 15,
-    height: 15,
-    borderRadius: 20,
+    width: 30,
+    height: 30,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#E5E7EB",
+    marginRight: 8,
   },
-
   badge: {
     position: "absolute",
-    top: -4,
-    right: -4,
+    top: -6,
+    right: -6,
     backgroundColor: "#EF4444",
-    borderRadius: 5,
-    minWidth: 5,
-    height: 5,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: "#fff",
   },
-
   badgeText: {
     color: "#fff",
-    fontSize: 2,
+    fontSize: 10,
     fontWeight: "bold",
   },
   profileTextContainer: {
@@ -1182,7 +1177,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderTopWidth: 1,
     borderTopColor: "#d0e8d0",
-    // paddingVertical: 7,
     width: "100%",
     elevation: 12,
     shadowColor: "#000",
@@ -1200,16 +1194,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 25,
-    // marginRight: 1,
     alignItems: "center",
     justifyContent: "center",
-    // borderWidth: 1,
-    // backgroundColor: "#1e7e34",
-    // borderColor: "#1e7e34",
   },
   bottomNavItemActive: {
-    // backgroundColor: "#1e7e34",
-    // borderColor: "#1e7e34",
   },
   bottomNavText: {
     fontSize: 13,
@@ -1358,7 +1346,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   username: {
-    marginTop: 10,
     fontSize: 11,
     color: "#2563EB",
     fontWeight: "600",
@@ -1480,4 +1467,99 @@ const styles = StyleSheet.create({
     color: "#777",
     marginTop: 6,
   },
+  blinkIcon: {
+    opacity: 0.4,
+  },
+  // Idle Modal Styles
+  idleModalContent: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+  },
+  idleModalIcon: {
+    fontSize: 40,
+    marginBottom: 15,
+    color: '#FF7900',
+  },
+  idleModalText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 25,
+    lineHeight: 24,
+  },
+  idleModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  idleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 120,
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  // Add these to your existing StyleSheet, preferably after the existing modal styles
+
+idleModalContent: {
+  padding: 20,
+  alignItems: 'center',
+  backgroundColor: '#fff',
+  borderRadius: 10,
+},
+idleModalIcon: {
+  fontSize: 40,
+  marginBottom: 15,
+  color: '#FF7900',
+},
+idleModalText: {
+  fontSize: 16,
+  color: '#333',
+  textAlign: 'center',
+  marginBottom: 25,
+  lineHeight: 24,
+  paddingHorizontal: 10,
+},
+idleModalButtons: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  width: '100%',
+  paddingHorizontal: 10,
+},
+idleButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 12,
+  paddingHorizontal: 20,
+  borderRadius: 8,
+  flex: 1,
+  marginHorizontal: 5,
+  elevation: 2,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.1,
+  shadowRadius: 2,
+},
+logoutButton: {
+  backgroundColor: '#d9534f',
+},
+stayConnectedButton: {
+  backgroundColor: '#28a745',
+},
+buttonText: {
+  color: '#fff',
+  fontWeight: '600',
+  fontSize: 14,
+  marginLeft: 8,
+},
 });

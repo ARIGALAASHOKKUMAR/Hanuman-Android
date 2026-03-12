@@ -26,9 +26,6 @@ myAxios.interceptors.request.use(
   (config) => {
     const state = store.getState();
     const accessToken = state.LoginReducer.token;
-
-    console.log("accessToken", accessToken);
-
     if (accessToken) {
       config.headers["Authorization"] = `Bearer ${accessToken}`;
     }
