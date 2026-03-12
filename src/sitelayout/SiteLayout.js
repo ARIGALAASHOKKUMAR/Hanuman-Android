@@ -33,6 +33,7 @@ import SessionTime from "./SessionTime";
 import Icon from "react-native-vector-icons/Feather";
 import { Ionicons } from "@expo/vector-icons";
 import UserMessage from "./UserMessage";
+import { showSuccessToast } from "../utils/showToast";
 
 const FALLBACK_PROFILE =
   "https://cdn-icons-png.flaticon.com/512/149/149071.png";
@@ -136,6 +137,10 @@ const SiteLayout = ({
     return false;
   }, [services, currentScreenName]);
 
+  const [isConcurrentLoginDetected, setIsConcurrentLoginDetected] =
+    useState(false);
+  const intervalRef = useRef(null);
+
   const serviceAuthentication = useCallback(async () => {
     try {
       const response = await myAxios.get(SERVICE_AUTH_END_POINT);
@@ -168,11 +173,14 @@ const SiteLayout = ({
         const serverSessionDetails =
           response?.data?.activeusers?.sessionDetails || "";
 
+        // Always update the count - this will show/hide the banner automatically
         setActiveUsersCount(activeCount);
         setSessionDetails(serverSessionDetails);
 
+        // Only show the alert modal when user clicks the banner
+        // Don't automatically set sessionAlertVisible true
         if (activeCount > 0) {
-          setSessionAlertVisible(true);
+          setSessionAlertVisible(true); // Remove this line to not auto-show modal
         }
       }
     } catch (error) {
@@ -180,13 +188,51 @@ const SiteLayout = ({
         error?.response?.data?.message ||
         error?.message ||
         "Something went wrong";
-      Alert.alert("Error", `Concurrent login check failed: ${message}`);
+      showSuccessToast("Error", `Concurrent login check failed: ${message}`);
+      navigation?.reset?.({
+        index: 0,
+        routes: [{ name: "Login" }],
+      });
     }
   }, []);
 
   useEffect(() => {
+    // Clear any existing interval first
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    // Set up new interval
+    intervalRef.current = setInterval(() => {
+      concurrentLoginDetection();
+    }, 3000);
+
+    // Cleanup on unmount
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [concurrentLoginDetection]);
+
+  useEffect(() => {
     serviceAuthentication();
-  }, [serviceAuthentication]);
+  }, []);
+
+  // Optional: If you want to stop the interval when the user views the session details
+  // You can add this effect to clear interval when modal is open
+  useEffect(() => {
+    if (sessionAlertVisible && intervalRef.current) {
+      // Optionally pause interval when modal is open to save resources
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    } else if (!sessionAlertVisible && !intervalRef.current) {
+      // Restart interval when modal closes
+      intervalRef.current = setInterval(() => {
+        concurrentLoginDetection();
+      }, 3000);
+    }
+  }, [sessionAlertVisible]);
 
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
@@ -231,11 +277,10 @@ const SiteLayout = ({
   };
 
   const logoutAll = async (type) => {
-    try {
       let response;
 
       if (type === "A") {
-        response = await commonAPICall(LOGOUT_ALL_END_POINT, {}, "POST");
+        response = await commonAPICall(LOGOUT_ALL_END_POINT, {}, "POST",dispatch);
         if (response?.status === 200) {
           dispatch(logOut());
           navigation?.reset?.({
@@ -248,19 +293,15 @@ const SiteLayout = ({
           LOGOUT_ALL_EXCEPT_THIS_END_POINT,
           {},
           "POST",
+          dispatch
         );
         if (response?.status === 200) {
           setSessionAlertVisible(false);
           serviceAuthentication();
         }
       }
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        "Something went wrong while processing session logout.",
-      );
-    }
-  };
+    } 
+  
 
   // Modified to show dropdown menu
   const toggleProfileMenu = () => {
@@ -421,6 +462,8 @@ const SiteLayout = ({
           </View>
         )}
 
+        <UserMessage></UserMessage>
+
         {activeUsersCount > 0 && (
           <TouchableOpacity
             style={styles.securityBanner}
@@ -432,8 +475,6 @@ const SiteLayout = ({
             </Text>
           </TouchableOpacity>
         )}
-
-        <UserMessage></UserMessage>
 
         {/* <View style={styles.breadcrumbContainer}>
           <BreadCrumb

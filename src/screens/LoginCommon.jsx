@@ -13,6 +13,7 @@ import {
   Platform,
   StatusBar,
   Button,
+  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -45,6 +46,14 @@ const LoginCommon = ({ navigation }) => {
     password: "",
     deptCaptcha: "",
   });
+
+  const incidentOptions = [
+     { id: "0", title: "General Incidents", icon: "elephant-outline", type: "general" },
+    { id: "1", title: "Gaja Praja", icon: "elephant-outline", type: "gaja" },
+    { id: "6", title: "Sarpa Mithra", icon: "snake-outline", type: "sarpa" },
+    { id: "5", title: "Monkey Menace", icon: "monkey-outline", type: "monkey" },
+    // Add more as needed
+  ];
 
   const dispatch = useDispatch();
 
@@ -99,11 +108,10 @@ const LoginCommon = ({ navigation }) => {
   };
 
   const generateCaptcha = async () => {
-      const response = await commonAPICall(GENERATE_CAPTCHA,{},"get",dispatch);
-      setCaptchaImage(response?.data?.captcha || "");
-      setStoredCaptchaId(response?.data?.captchaId || "");
+    const response = await commonAPICall(GENERATE_CAPTCHA, {}, "get", dispatch);
+    setCaptchaImage(response?.data?.captcha || "");
+    setStoredCaptchaId(response?.data?.captchaId || "");
   };
-
 
   const logoutUser = async () => {
     try {
@@ -212,14 +220,18 @@ const LoginCommon = ({ navigation }) => {
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="dark-content" backgroundColor="#eef3ff" />
+
       <KeyboardAvoidingView
         style={styles.flexOne}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 20}
+        enabled
       >
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          bounces={false}
         >
           <View style={styles.topDecorationOne} />
           <View style={styles.topDecorationTwo} />
@@ -266,6 +278,8 @@ const LoginCommon = ({ navigation }) => {
                   maxLength={18}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  returnKeyType="next"
+                  blurOnSubmit={false}
                 />
               </View>
               {errors.username ? (
@@ -299,6 +313,7 @@ const LoginCommon = ({ navigation }) => {
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  returnKeyType="done"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
@@ -316,7 +331,7 @@ const LoginCommon = ({ navigation }) => {
               ) : null}
             </View>
 
-            <View>
+            <View style={styles.fieldBlock}>
               <Text style={styles.label}>Captcha</Text>
               <View style={styles.captchaContainer}>
                 {captchaImage ? (
@@ -354,7 +369,9 @@ const LoginCommon = ({ navigation }) => {
                   style={styles.input}
                   value={deptCaptcha}
                   onChangeText={(text) => {
-                    setDeptCaptcha(text);
+                    // Filter to allow only numbers if you want strictly numeric
+                    const numericText = text.replace(/[^0-9]/g, "");
+                    setDeptCaptcha(numericText);
                     if (errors.deptCaptcha) {
                       setErrors({ ...errors, deptCaptcha: "" });
                     }
@@ -362,6 +379,9 @@ const LoginCommon = ({ navigation }) => {
                   maxLength={6}
                   autoCapitalize="characters"
                   autoCorrect={false}
+                  keyboardType="number-pad" // Changed to number-pad for better numeric input
+                  returnKeyType="done"
+                  onSubmitEditing={getLogin} // Submit form when done key is pressed
                 />
               </View>
 
@@ -397,11 +417,36 @@ const LoginCommon = ({ navigation }) => {
             <Text style={styles.footerText}>
               Secure access to your application
             </Text>
-            <Button
-              title="Report Incident"
-              onPress={() => navigation.navigate("IncidentReporting")}
-            />
+
+            <View style={styles.incidentSection}>
+              <FlatList
+                data={incidentOptions}
+                keyExtractor={(item) => item.id}
+                horizontal={true}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.incidentList}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.incidentCard} // Add marginRight in your styles
+                    onPress={() =>
+                      navigation.navigate("IncidentReporting", {
+                        item: item,
+                      })
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Button
+                      title={item.title}
+                      onPress={() => navigation.navigate("IncidentReporting",{  item: item})}
+                    />
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
           </View>
+
+          {/* Add extra space at bottom for keyboard */}
+          <View style={styles.bottomSpacing} />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -417,6 +462,11 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#eef3ff",
+  },
+
+  incidentCard: {
+    marginRight: 12, // Add space between cards
+    // ... your existing styles
   },
   scrollContainer: {
     flexGrow: 1,
@@ -523,7 +573,7 @@ const styles = StyleSheet.create({
   captchaContainer: {
     flexDirection: "row",
     // alignItems: "center",
-    gap:2,
+    gap: 2,
     marginBottom: 12,
   },
   captchaImage: {

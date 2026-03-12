@@ -29,8 +29,17 @@ import {
   ImageBucket,
 } from "../utils/utils";
 import { useDispatch } from "react-redux";
+import * as FileSystem from 'expo-file-system';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { Platform as RNPlatform } from 'react-native';
 
-const IncidentReporting = () => {
+const IncidentReporting = ({route}) => {
+
+    const { item } = route.params;
+
+    console.log("iteem",item.id);
+    
+
   const [ANIMALS, setAnimals] = useState([]);
   const [INCIDENTS, setIncidents] = useState([]);
   const [pageLoading, setPageLoading] = useState(true);
@@ -48,6 +57,8 @@ const IncidentReporting = () => {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  const dispatch = useDispatch();
 
   const convertToAMPM = (time) => {
     if (!time) return "";
@@ -114,6 +125,7 @@ const IncidentReporting = () => {
       .min(1, "At least one photo is required"),
   });
 
+  
   const incidentFormik = useFormik({
     initialValues: {
       district: "",
@@ -140,11 +152,13 @@ const IncidentReporting = () => {
     validateOnBlur: true,
   });
 
-  const dispatch = useDispatch()
+  useEffect(()=>{
+       incidentFormik.setFieldValue("animalId", item.id);
+  },[])
 
   const getAnimals = async () => {
     try {
-      const response = await commonAPICall(GETANIMALS, {}, "get",dispatch);
+      const response = await commonAPICall(GETANIMALS, {}, "get", dispatch);
       if (response.status === 200) {
         setAnimals(response.data.Animal_Master || []);
       }
@@ -193,6 +207,229 @@ const IncidentReporting = () => {
     }
   };
 
+  // Create a proper file object for React Native
+  const createFileFromUri = async (uri, fileName, mimeType) => {
+    try {
+      // Read file info
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      
+      // Read file as base64
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Convert base64 to blob
+      const blob = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.onload = function() {
+          resolve(xhr.response);
+        };
+        xhr.onerror = function(e) {
+          reject(new TypeError('Network request failed'));
+        };
+        xhr.responseType = 'blob';
+        xhr.open('GET', `data:${mimeType};base64,${base64}`, true);
+        xhr.send(null);
+      });
+
+      // Create a File object
+      const file = new File([blob], fileName, { type: mimeType });
+      
+      // Add custom properties that might be needed
+      file.uri = uri;
+      file.size = fileInfo.size;
+      
+      return file;
+    } catch (error) {
+      console.error('Error creating file:', error);
+      throw error;
+    }
+  };
+
+  // Create a mock event for ImageBucket
+  const createMockEvent = (file) => {
+    return {
+      preventDefault: () => {},
+      stopPropagation: () => {},
+      target: {
+        files: [file],
+        value: null,
+      },
+      currentTarget: {
+        files: [file],
+        value: null,
+      },
+      nativeEvent: {
+        target: {
+          files: [file],
+          value: null,
+        },
+      },
+    };
+  };
+
+  const uploadUsingImageBucket = async (asset, index) => {
+    try {
+      setUploadingIndex(index);
+
+      // Get file info
+      const fileName = asset.fileName || 
+        asset.uri?.split("/").pop() || 
+        `incident_${Date.now()}.jpg`;
+      
+      const fileExt = fileName.split(".").pop()?.toLowerCase() || 'jpg';
+      
+      // Validate file type
+      const validExtensions = ["jpg", "jpeg", "png", "webp"];
+      if (!validExtensions.includes(fileExt)) {
+        Alert.alert("Warning", "Please select only image files (jpg, jpeg, png)");
+        return;
+      }
+
+      // Get file size
+      const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+      
+      // Check file size (20MB max from your ImageBucket)
+      const MAX_SIZE = 20 * 1024 * 1024; // 20MB in bytes
+      if (fileInfo.size > MAX_SIZE) {
+        Alert.alert("Error", `File size should be less than 20MB. Current size: ${(fileInfo.size / (1024 * 1024)).toFixed(2)}MB`);
+        return;
+      }
+
+      // Compress image if needed (optional)
+      let processedUri = asset.uri;
+      if (fileInfo.size > 5 * 1024 * 1024) { // If > 5MB, compress
+        const manipulated = await manipulateAsync(
+          asset.uri,
+          [{ resize: { width: 1200 } }],
+          { compress: 0.8, format: SaveFormat.JPEG }
+        );
+        processedUri = manipulated.uri;
+        
+        // Get new file info after compression
+        const newFileInfo = await FileSystem.getInfoAsync(processedUri);
+        console.log(`Compressed from ${(fileInfo.size / 1024 / 1024).toFixed(2)}MB to ${(newFileInfo.size / 1024 / 1024).toFixed(2)}MB`);
+      }
+
+      // Determine mime type
+      const mimeType = fileExt === 'png' ? 'image/png' : 
+                       fileExt === 'webp' ? 'image/webp' : 'image/jpeg';
+
+      // Create a proper File object
+      const file = await createFileFromUri(processedUri, fileName, mimeType);
+      
+      // Create mock event for ImageBucket
+      const mockEvent = createMockEvent(file);
+
+      const path = "APFD/CAMPA/incident-photos/"; // Using your path from original code
+      const fieldName = `incidentPhotos[${index}]`;
+
+      // Call ImageBucket
+      await ImageBucket(
+        mockEvent, 
+        incidentFormik, 
+        path, 
+        fieldName, 
+        MAX_SIZE.toString()
+      );
+
+      // Mark field as touched for validation
+      incidentFormik.setFieldTouched("incidentPhotos", true);
+      
+    } catch (error) {
+      console.error("ImageBucket error:", error);
+      Alert.alert("Error", "Image upload failed: " + (error.message || "Unknown error"));
+    } finally {
+      setUploadingIndex(null);
+    }
+  };
+
+  const openCamera = async (index) => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert("Permission", "Camera permission is required");
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        allowsEditing: false,
+        base64: false,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets?.[0];
+      if (!asset?.uri) return;
+
+      await uploadUsingImageBucket(asset, index);
+    } catch (error) {
+      console.error("Camera error:", error);
+      Alert.alert("Error", "Unable to open camera");
+    }
+  };
+
+  const openGallery = async (index) => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert("Permission", "Gallery permission is required");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        allowsEditing: false,
+        base64: false,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets?.[0];
+      if (!asset?.uri) return;
+
+      await uploadUsingImageBucket(asset, index);
+    } catch (error) {
+      console.error("Gallery error:", error);
+      Alert.alert("Error", "Unable to pick image");
+    }
+  };
+
+  const pickImage = (index) => {
+    Alert.alert("Upload Photo", "Choose image source", [
+      {
+        text: "Camera",
+        onPress: () => openCamera(index),
+      },
+      {
+        text: "Gallery",
+        onPress: () => openGallery(index),
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ]);
+  };
+
+  const addPhotoField = () => {
+    incidentFormik.setFieldValue("incidentPhotos", [
+      ...incidentFormik.values.incidentPhotos,
+      "",
+    ]);
+  };
+
+  const removePhotoField = (index) => {
+    const updatedPhotos = [...incidentFormik.values.incidentPhotos];
+    updatedPhotos.splice(index, 1);
+    incidentFormik.setFieldValue("incidentPhotos", updatedPhotos);
+  };
+
   const GetOtp = async (mobileNo) => {
     const errors = await incidentFormik.validateForm();
     const { otp, ...errorsWithoutOtp } = errors;
@@ -219,7 +456,8 @@ const IncidentReporting = () => {
       const response = await commonAPICall(
         VOLUNTEERMOBILEOTP + mobileNo,
         {},
-        "post"
+        "post",
+        dispatch
       );
       setIsSubmitting(false);
 
@@ -301,7 +539,7 @@ const IncidentReporting = () => {
           otp,
         },
         "POST",
-        dis
+        dispatch
       );
 
       setIsSubmitting(false);
@@ -358,135 +596,6 @@ const IncidentReporting = () => {
       incidentPhotos: "Incident Photos",
     };
     return labels[field] || field;
-  };
-
-  const uploadImageUsingImageBucket = async (asset, index) => {
-    try {
-      setUploadingIndex(index);
-
-      const fileName =
-        asset.fileName ||
-        asset.uri?.split("/").pop() ||
-        `incident_${Date.now()}.jpg`;
-
-      const extension = fileName.split(".").pop()?.toLowerCase();
-
-      if (!["jpg", "jpeg", "png", "webp"].includes(extension)) {
-        Alert.alert("Warning", "Please select only image files");
-        return;
-      }
-
-      const rnFile = {
-        uri: asset.uri,
-        name: fileName,
-        type:
-          extension === "png"
-            ? "image/png"
-            : extension === "webp"
-              ? "image/webp"
-              : "image/jpeg",
-      };
-
-      const mockEvent = {
-        target: {
-          files: [rnFile],
-          value: null,
-        },
-      };
-
-      const path = "APFD/SAWMILLS/";
-      const fieldName = `incidentPhotos[${index}]`;
-
-      await ImageBucket(mockEvent, incidentFormik, path, fieldName, "20971520");
-
-      incidentFormik.setFieldTouched("incidentPhotos", true);
-    } catch (error) {
-      Alert.alert("Error", "Image upload failed");
-    } finally {
-      setUploadingIndex(null);
-    }
-  };
-
-  const openCamera = async (index) => {
-    try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-
-      if (!permission.granted) {
-        Alert.alert("Permission", "Camera permission is required");
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        allowsEditing: false,
-      });
-
-      if (result.canceled) return;
-
-      const asset = result.assets?.[0];
-      if (!asset?.uri) return;
-
-      await uploadImageUsingImageBucket(asset, index);
-    } catch (error) {
-      Alert.alert("Error", "Unable to open camera");
-    }
-  };
-
-  const openGallery = async (index) => {
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        Alert.alert("Permission", "Gallery permission is required");
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        allowsEditing: false,
-      });
-
-      if (result.canceled) return;
-
-      const asset = result.assets?.[0];
-      if (!asset?.uri) return;
-
-      await uploadImageUsingImageBucket(asset, index);
-    } catch (error) {
-      Alert.alert("Error", "Unable to pick image");
-    }
-  };
-
-  const pickImage = (index) => {
-    Alert.alert("Upload Photo", "Choose image source", [
-      {
-        text: "Camera",
-        onPress: () => openCamera(index),
-      },
-      {
-        text: "Gallery",
-        onPress: () => openGallery(index),
-      },
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-    ]);
-  };
-
-  const addPhotoField = () => {
-    incidentFormik.setFieldValue("incidentPhotos", [
-      ...incidentFormik.values.incidentPhotos,
-      "",
-    ]);
-  };
-
-  const removePhotoField = (index) => {
-    const updatedPhotos = [...incidentFormik.values.incidentPhotos];
-    updatedPhotos.splice(index, 1);
-    incidentFormik.setFieldValue("incidentPhotos", updatedPhotos);
   };
 
   useEffect(() => {
@@ -999,7 +1108,7 @@ const IncidentReporting = () => {
                   onChangeText={(text) => handleOtpChange(index, text)}
                   onKeyPress={(e) => handleOtpKeyPress(index, e)}
                   keyboardType="numeric"
-                  maxLength={6}
+                  maxLength={1}
                   textAlign="center"
                 />
               ))}

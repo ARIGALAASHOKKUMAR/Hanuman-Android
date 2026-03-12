@@ -57,8 +57,7 @@ function validateFileTypeAndSize(customefile, size) {
 }
 
 
-export  default function ImageBucket(e, formik, path, name, size){
-    const dispatch = store.dispatch;
+export  default function ImageBucket(e, formik, path, name, size,dispatch){
   dispatch(showLoader("Uploading ..."));
     e.preventDefault();
     const file = e.target.files[0];
