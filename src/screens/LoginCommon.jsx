@@ -471,15 +471,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   incidentCardText: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: "500",
     color: "white",
     backgroundColor: "orange",
     padding: 3,
     borderRadius: 4,
-    minWidth:120,
+    minWidth:100,
     height:30,
-    textAlign:"center"
+    textAlign:"center",
   },
 
   flexOne: {
