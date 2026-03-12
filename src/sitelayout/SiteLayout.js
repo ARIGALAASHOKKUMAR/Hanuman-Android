@@ -179,9 +179,9 @@ const SiteLayout = ({
 
         // Only show the alert modal when user clicks the banner
         // Don't automatically set sessionAlertVisible true
-        if (activeCount > 0) {
-          setSessionAlertVisible(true); // Remove this line to not auto-show modal
-        }
+        // if (activeCount > 0) {
+        //   setSessionAlertVisible(true); // Remove this line to not auto-show modal
+        // }
       }
     } catch (error) {
       const message =
