@@ -22,6 +22,23 @@ const ModalPopup = () => {
     dispatch(hideModal());
   };
 
+  // Check if modalText is a valid React element
+  const isValidReactElement = React.isValidElement(modalText);
+
+  // Determine what to render in the body
+  const renderBody = () => {
+    if (typeof modalText === "string") {
+      return <Text style={styles.bodyText}>{modalText}</Text>;
+    } else if (isValidReactElement) {
+      return modalText;
+    } else if (modalText === null || modalText === undefined) {
+      return null;
+    } else {
+      // Handle other types (numbers, etc.)
+      return <Text style={styles.bodyText}>{String(modalText)}</Text>;
+    }
+  };
+
   return (
     <Modal
       visible={!!modal}
@@ -46,11 +63,7 @@ const ModalPopup = () => {
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
           >
-            {typeof modalText === "string" ? (
-              <Text style={styles.bodyText}>{modalText}</Text>
-            ) : (
-              modalText
-            )}
+            {renderBody()}
           </ScrollView>
 
           {/* FOOTER */}
@@ -64,6 +77,7 @@ const ModalPopup = () => {
 };
 
 export default ModalPopup;
+
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -79,7 +93,7 @@ const styles = StyleSheet.create({
     maxHeight: "80%",
     backgroundColor: "#ffffff",
     borderRadius: 22,
-    overflow: "hidden",   // important for full header color
+    overflow: "hidden", // important for full header color
     elevation: 10,
   },
 
