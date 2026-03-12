@@ -5,7 +5,7 @@ import { useDispatch } from "react-redux";
 import { hideLoader, hideMessage, showLoader, showMessage } from "../actions";
 import { Toast } from "react-native-sprinkle-toast";
 
-export const base_url = "https://swapi.dev.nidhi.apcfss.in/apsawmills";
+export const base_url = "https://forests.ap.gov.in/apsawmills/";
 
 const state = store.getState();
 const accessToken = state.LoginReducer.token;

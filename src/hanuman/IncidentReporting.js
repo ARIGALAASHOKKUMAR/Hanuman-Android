@@ -26,12 +26,8 @@ import {
   GETINCIDENTS,
   VOLUNTEERMOBILEOTP,
   createIncident,
-  ImageBucket,
 } from "../utils/utils";
 import { useDispatch } from "react-redux";
-import * as FileSystem from 'expo-file-system';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { Platform as RNPlatform } from 'react-native';
 
 const IncidentReporting = ({route}) => {
 
@@ -48,7 +44,6 @@ const IncidentReporting = ({route}) => {
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpValues, setOtpValues] = useState(["", "", "", "", "", ""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadingIndex, setUploadingIndex] = useState(null);
 
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState([]);
@@ -119,10 +114,7 @@ const IncidentReporting = ({route}) => {
         }
         return true;
       }
-    ),
-    incidentPhotos: Yup.array()
-      .of(Yup.string().required("Photo is required"))
-      .min(1, "At least one photo is required"),
+    )
   });
 
   
@@ -133,7 +125,6 @@ const IncidentReporting = ({route}) => {
       village: "",
       animalId: "",
       incidentTypeId: "",
-      incidentPhotos: [""],
       incidentDate: "",
       incidentTime: "",
       latitude: "",
@@ -205,229 +196,6 @@ const IncidentReporting = ({route}) => {
     } catch (error) {
       setPageLoading(false);
     }
-  };
-
-  // Create a proper file object for React Native
-  const createFileFromUri = async (uri, fileName, mimeType) => {
-    try {
-      // Read file info
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      
-      // Read file as base64
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      // Convert base64 to blob
-      const blob = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.onload = function() {
-          resolve(xhr.response);
-        };
-        xhr.onerror = function(e) {
-          reject(new TypeError('Network request failed'));
-        };
-        xhr.responseType = 'blob';
-        xhr.open('GET', `data:${mimeType};base64,${base64}`, true);
-        xhr.send(null);
-      });
-
-      // Create a File object
-      const file = new File([blob], fileName, { type: mimeType });
-      
-      // Add custom properties that might be needed
-      file.uri = uri;
-      file.size = fileInfo.size;
-      
-      return file;
-    } catch (error) {
-      console.error('Error creating file:', error);
-      throw error;
-    }
-  };
-
-  // Create a mock event for ImageBucket
-  const createMockEvent = (file) => {
-    return {
-      preventDefault: () => {},
-      stopPropagation: () => {},
-      target: {
-        files: [file],
-        value: null,
-      },
-      currentTarget: {
-        files: [file],
-        value: null,
-      },
-      nativeEvent: {
-        target: {
-          files: [file],
-          value: null,
-        },
-      },
-    };
-  };
-
-  const uploadUsingImageBucket = async (asset, index) => {
-    try {
-      setUploadingIndex(index);
-
-      // Get file info
-      const fileName = asset.fileName || 
-        asset.uri?.split("/").pop() || 
-        `incident_${Date.now()}.jpg`;
-      
-      const fileExt = fileName.split(".").pop()?.toLowerCase() || 'jpg';
-      
-      // Validate file type
-      const validExtensions = ["jpg", "jpeg", "png", "webp"];
-      if (!validExtensions.includes(fileExt)) {
-        Alert.alert("Warning", "Please select only image files (jpg, jpeg, png)");
-        return;
-      }
-
-      // Get file size
-      const fileInfo = await FileSystem.getInfoAsync(asset.uri);
-      
-      // Check file size (20MB max from your ImageBucket)
-      const MAX_SIZE = 20 * 1024 * 1024; // 20MB in bytes
-      if (fileInfo.size > MAX_SIZE) {
-        Alert.alert("Error", `File size should be less than 20MB. Current size: ${(fileInfo.size / (1024 * 1024)).toFixed(2)}MB`);
-        return;
-      }
-
-      // Compress image if needed (optional)
-      let processedUri = asset.uri;
-      if (fileInfo.size > 5 * 1024 * 1024) { // If > 5MB, compress
-        const manipulated = await manipulateAsync(
-          asset.uri,
-          [{ resize: { width: 1200 } }],
-          { compress: 0.8, format: SaveFormat.JPEG }
-        );
-        processedUri = manipulated.uri;
-        
-        // Get new file info after compression
-        const newFileInfo = await FileSystem.getInfoAsync(processedUri);
-        console.log(`Compressed from ${(fileInfo.size / 1024 / 1024).toFixed(2)}MB to ${(newFileInfo.size / 1024 / 1024).toFixed(2)}MB`);
-      }
-
-      // Determine mime type
-      const mimeType = fileExt === 'png' ? 'image/png' : 
-                       fileExt === 'webp' ? 'image/webp' : 'image/jpeg';
-
-      // Create a proper File object
-      const file = await createFileFromUri(processedUri, fileName, mimeType);
-      
-      // Create mock event for ImageBucket
-      const mockEvent = createMockEvent(file);
-
-      const path = "APFD/CAMPA/incident-photos/"; // Using your path from original code
-      const fieldName = `incidentPhotos[${index}]`;
-
-      // Call ImageBucket
-      await ImageBucket(
-        mockEvent, 
-        incidentFormik, 
-        path, 
-        fieldName, 
-        MAX_SIZE.toString()
-      );
-
-      // Mark field as touched for validation
-      incidentFormik.setFieldTouched("incidentPhotos", true);
-      
-    } catch (error) {
-      console.error("ImageBucket error:", error);
-      Alert.alert("Error", "Image upload failed: " + (error.message || "Unknown error"));
-    } finally {
-      setUploadingIndex(null);
-    }
-  };
-
-  const openCamera = async (index) => {
-    try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-
-      if (!permission.granted) {
-        Alert.alert("Permission", "Camera permission is required");
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        allowsEditing: false,
-        base64: false,
-      });
-
-      if (result.canceled) return;
-
-      const asset = result.assets?.[0];
-      if (!asset?.uri) return;
-
-      await uploadUsingImageBucket(asset, index);
-    } catch (error) {
-      console.error("Camera error:", error);
-      Alert.alert("Error", "Unable to open camera");
-    }
-  };
-
-  const openGallery = async (index) => {
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        Alert.alert("Permission", "Gallery permission is required");
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        allowsEditing: false,
-        base64: false,
-      });
-
-      if (result.canceled) return;
-
-      const asset = result.assets?.[0];
-      if (!asset?.uri) return;
-
-      await uploadUsingImageBucket(asset, index);
-    } catch (error) {
-      console.error("Gallery error:", error);
-      Alert.alert("Error", "Unable to pick image");
-    }
-  };
-
-  const pickImage = (index) => {
-    Alert.alert("Upload Photo", "Choose image source", [
-      {
-        text: "Camera",
-        onPress: () => openCamera(index),
-      },
-      {
-        text: "Gallery",
-        onPress: () => openGallery(index),
-      },
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-    ]);
-  };
-
-  const addPhotoField = () => {
-    incidentFormik.setFieldValue("incidentPhotos", [
-      ...incidentFormik.values.incidentPhotos,
-      "",
-    ]);
-  };
-
-  const removePhotoField = (index) => {
-    const updatedPhotos = [...incidentFormik.values.incidentPhotos];
-    updatedPhotos.splice(index, 1);
-    incidentFormik.setFieldValue("incidentPhotos", updatedPhotos);
   };
 
   const GetOtp = async (mobileNo) => {
@@ -593,7 +361,6 @@ const IncidentReporting = ({route}) => {
       animalCount: "Animal Count",
       incidentLocationId: "Location Type",
       otherIncidentLocation: "Other Incident Location",
-      incidentPhotos: "Incident Photos",
     };
     return labels[field] || field;
   };
@@ -901,66 +668,6 @@ const IncidentReporting = ({route}) => {
           </View>
 
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>Upload Incident Photos *</Text>
-
-            {incidentFormik.values.incidentPhotos.map((image, index) => (
-              <View key={index} style={styles.photoRow}>
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={() => pickImage(index)}
-                  disabled={uploadingIndex === index}
-                >
-                  {uploadingIndex === index ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <>
-                      <Ionicons name="camera-outline" size={18} color="#fff" />
-                      <Text style={styles.uploadButtonText}>
-                        {image ? "Change Photo" : "Camera / Gallery"}
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-
-                {image ? (
-                  <Image source={{ uri: image }} style={styles.previewImage} />
-                ) : (
-                  <View style={styles.emptyPreview}>
-                    <Ionicons
-                      name="image-outline"
-                      size={24}
-                      color="#94a3b8"
-                    />
-                  </View>
-                )}
-
-                {index !== 0 && (
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => removePhotoField(index)}
-                  >
-                    <Ionicons name="trash-outline" size={18} color="#fff" />
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-
-            <TouchableOpacity style={styles.addButton} onPress={addPhotoField}>
-              <Ionicons name="add-circle-outline" size={18} color="#fff" />
-              <Text style={styles.addButtonText}>Add More</Text>
-            </TouchableOpacity>
-
-            {incidentFormik.touched.incidentPhotos &&
-            incidentFormik.errors.incidentPhotos ? (
-              <Text style={styles.errorText}>
-                {Array.isArray(incidentFormik.errors.incidentPhotos)
-                  ? incidentFormik.errors.incidentPhotos[0]
-                  : incidentFormik.errors.incidentPhotos}
-              </Text>
-            ) : null}
-          </View>
-
-          <View style={styles.fieldBlock}>
             <Text style={styles.label}>Description / Notes *</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
@@ -1251,67 +958,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     color: "#3856b5",
     fontWeight: "600",
-  },
-  photoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  uploadButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#3856b5",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    flex: 1,
-    minHeight: 48,
-  },
-  uploadButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-    marginLeft: 8,
-    fontSize: 13,
-  },
-  previewImage: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    marginLeft: 10,
-  },
-  emptyPreview: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    marginLeft: 10,
-    backgroundColor: "#f1f5f9",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  deleteButton: {
-    marginLeft: 10,
-    backgroundColor: "#dc2626",
-    width: 42,
-    height: 42,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  addButton: {
-    marginTop: 4,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#16a34a",
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  addButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-    marginLeft: 8,
   },
   submitButton: {
     backgroundColor: "#16a34a",
