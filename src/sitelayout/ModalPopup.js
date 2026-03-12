@@ -1,12 +1,22 @@
 import React from "react";
-import { Modal, View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
+import {
+  Modal,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+} from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import { Ionicons } from "@expo/vector-icons";
 import { hideModal } from "../actions";
 
 const ModalPopup = () => {
   const dispatch = useDispatch();
 
-  const { modal, modalText } = useSelector((state) => state.ModalReducer);
+  const { modal, modalText, modalTitle } = useSelector(
+    (state) => state.ModalReducer || {}
+  );
 
   const handleClose = () => {
     dispatch(hideModal());
@@ -14,24 +24,39 @@ const ModalPopup = () => {
 
   return (
     <Modal
-      visible={modal}
+      visible={!!modal}
       transparent
       animationType="fade"
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
+          {/* HEADER */}
+          <View style={styles.header}>
+            <Text style={styles.title}>{modalTitle || "Details"}</Text>
 
-          <Text style={styles.title}>Please fix the below Fields</Text>
+            <TouchableOpacity onPress={handleClose} style={styles.iconButton}>
+              <Ionicons name="close" size={24} color="#e6e8eb" />
+            </TouchableOpacity>
+          </View>
 
-          <ScrollView style={{ maxHeight: 300 }}>
-            {modalText}
+          {/* BODY */}
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            {typeof modalText === "string" ? (
+              <Text style={styles.bodyText}>{modalText}</Text>
+            ) : (
+              modalText
+            )}
           </ScrollView>
 
-          <TouchableOpacity style={styles.button} onPress={handleClose}>
-            <Text style={styles.buttonText}>OK</Text>
+          {/* FOOTER */}
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+            <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
-
         </View>
       </View>
     </Modal>
@@ -39,38 +64,76 @@ const ModalPopup = () => {
 };
 
 export default ModalPopup;
-
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    backgroundColor: "rgba(15, 23, 42, 0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+
+  modalCard: {
+    width: "100%",
+    maxWidth: 420,
+    maxHeight: "80%",
+    backgroundColor: "#ffffff",
+    borderRadius: 22,
+    overflow: "hidden",   // important for full header color
+    elevation: 10,
+  },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "green",
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+  },
+
+  title: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
 
-  modalCard: {
-    width: "90%",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 18,
+  content: {
+    paddingHorizontal: 18,
   },
 
-  title: {
+  contentContainer: {
+    paddingVertical: 10,
+  },
+
+  bodyText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#374151",
+  },
+
+  closeButton: {
+    margin: 16,
+    backgroundColor: "#2563EB",
+    paddingVertical: 13,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  closeButtonText: {
+    color: "#ffffff",
     fontSize: 16,
     fontWeight: "700",
-    marginBottom: 10,
-  },
-
-  button: {
-    backgroundColor: "#2563eb",
-    padding: 12,
-    borderRadius: 6,
-    alignItems: "center",
-    marginTop: 16,
-  },
-
-  buttonText: {
-    color: "#fff",
-    fontWeight: "600",
   },
 });

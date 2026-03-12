@@ -21,7 +21,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import BreadCrumb from "./BreadCrumb";
-import { hideLoader, hideMessage, logOut } from "../actions";
+import { hideLoader, hideMessage, logOut, showModal } from "../actions";
 import {
   LOGOUT_ALL_END_POINT,
   LOGOUT_ALL_EXCEPT_THIS_END_POINT,
@@ -34,6 +34,7 @@ import Icon from "react-native-vector-icons/Feather";
 import { Ionicons } from "@expo/vector-icons";
 import UserMessage from "./UserMessage";
 import { showSuccessToast } from "../utils/showToast";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const FALLBACK_PROFILE =
   "https://cdn-icons-png.flaticon.com/512/149/149071.png";
@@ -277,31 +278,35 @@ const SiteLayout = ({
   };
 
   const logoutAll = async (type) => {
-      let response;
+    let response;
 
-      if (type === "A") {
-        response = await commonAPICall(LOGOUT_ALL_END_POINT, {}, "POST",dispatch);
-        if (response?.status === 200) {
-          dispatch(logOut());
-          navigation?.reset?.({
-            index: 0,
-            routes: [{ name: "Login" }],
-          });
-        }
-      } else if (type === "E") {
-        response = await commonAPICall(
-          LOGOUT_ALL_EXCEPT_THIS_END_POINT,
-          {},
-          "POST",
-          dispatch
-        );
-        if (response?.status === 200) {
-          setSessionAlertVisible(false);
-          serviceAuthentication();
-        }
+    if (type === "A") {
+      response = await commonAPICall(
+        LOGOUT_ALL_END_POINT,
+        {},
+        "POST",
+        dispatch,
+      );
+      if (response?.status === 200) {
+        dispatch(logOut());
+        navigation?.reset?.({
+          index: 0,
+          routes: [{ name: "Login" }],
+        });
       }
-    } 
-  
+    } else if (type === "E") {
+      response = await commonAPICall(
+        LOGOUT_ALL_EXCEPT_THIS_END_POINT,
+        {},
+        "POST",
+        dispatch,
+      );
+      if (response?.status === 200) {
+        setSessionAlertVisible(false);
+        serviceAuthentication();
+      }
+    }
+  };
 
   // Modified to show dropdown menu
   const toggleProfileMenu = () => {
@@ -310,8 +315,9 @@ const SiteLayout = ({
     if (profileButtonRef.current) {
       profileButtonRef.current.measure((x, y, width, height, pageX, pageY) => {
         setProfileMenuPosition({
-          top: pageY + height + 5,
-          left: pageX + width - 150, // Adjust dropdown width
+          top: 62,
+          right:5
+          // left: pageX + width - 150, // Adjust dropdown width
         });
       });
     }
@@ -407,21 +413,36 @@ const SiteLayout = ({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.logoContainer}>
-              <Image
+              {/* <Image
                 source={require("../../assets/logo_new.png")}
                 style={styles.headerLogo}
-              />
-              <Text style={styles.headerTitle}>H.A.N.U.M.A.N.</Text>
+              /> */}
+              {/* <Text> */}
+              <Text style={styles.headerTitle}>
+                H.A.N.U.M.A.N.{"\n"}
+                <Text style={styles.username}>Welcome:{username}</Text>
+              </Text>{" "}
             </View>
           </View>
 
+          <View style={styles.iconWrapper}>
+            <MaterialCommunityIcons
+              name="incognito"
+              size={15}
+              color="#374151"
+            />
+
+            {/* <View style={styles.badge}>
+              <Text style={styles.badgeText}>3</Text>
+            </View> */}
+          </View>
           <View style={styles.headerRight}>
-            {/* <SessionTime
+            <SessionTime
               remainingTime={remainingTime}
               randomTrigger={randomTrigger}
               navigation={navigation}
               style={styles.sessionTimeCompact}
-            /> */}
+            />
 
             {showProfile && (
               <TouchableOpacity
@@ -444,7 +465,45 @@ const SiteLayout = ({
           <View style={[styles.profileDropdown, profileMenuPosition]}>
             <TouchableOpacity
               style={styles.dropdownItem}
-              onPress={openProfile}
+              onPress={() =>
+                dispatch(
+                  showModal(
+                    <View>
+                      <Text style={styles.modalTitle}>Profile Details</Text>
+                      <Image
+                        source={profileSource}
+                        style={styles.modalProfileImage}
+                      />
+
+                      <Text style={styles.detailText}>
+                        USER ID: {userId || "-"}
+                      </Text>
+                      <Text style={styles.detailText}>
+                        Name: {username || "-"}
+                      </Text>
+                      <Text style={styles.detailText}>
+                        Role: {roleName || "-"}
+                      </Text>
+                      <Text style={styles.detailText}>
+                        Last Login Time: {formatSimpleHtmlText(lastLoginTime)}
+                      </Text>
+                      <Text style={styles.detailText}>
+                        Last Logout Time: {formatSimpleHtmlText(lastLogoutTime)}
+                      </Text>
+                      <Text style={styles.detailText}>
+                        Last Failure Login Time:{" "}
+                        {formatSimpleHtmlText(lastFailureAttemptTime)}
+                      </Text>
+
+                      {!!loginLocation && roleId === 1 && (
+                        <Text style={styles.detailText}>
+                          Login Location: {loginLocation}
+                        </Text>
+                      )}
+                    </View>,
+                  ),
+                )
+              }
               activeOpacity={0.7}
             >
               <Text style={styles.dropdownIcon}>👤</Text>
@@ -500,10 +559,17 @@ const SiteLayout = ({
         {/* </div> */}
 
         <View style={styles.bottomNav}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bottomNavScroll}
+          <View
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              justifyContent: "space-around",
+              width: "100%",
+              gap:0.5
+            }}
+            // horizontal
+            // showsHorizontalScrollIndicator={false}
+            // contentContainerStyle={styles.bottomNavScroll}
           >
             {(parents || [])
               .filter(
@@ -546,11 +612,15 @@ const SiteLayout = ({
                       size={24}
                       color={"#555"}
                     />
-                    <Text>{item?.menuitemname}</Text>
+                    <Text>
+                      {item?.menuitemname === "User Services"
+                        ? "Settings"
+                        : item?.menuitemname}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
-          </ScrollView>
+          </View>
         </View>
 
         <Modal
@@ -871,9 +941,16 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
   },
+  headerTitle2: {
+    color: "green",
+    fontSize: 16,
+    fontWeight: "500",
+    letterSpacing: 0.5,
+  },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
+    color: "black",
   },
   sessionTimeCompact: {
     marginRight: 8,
@@ -965,23 +1042,58 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   profileImage: {
-    height: 56,
-    width: 56,
-    borderRadius: 28,
+    height: 36,
+    width: 36,
+    borderRadius: 25,
     backgroundColor: "#e8f5e8",
-    borderWidth: 3,
+    borderWidth: 1,
     borderColor: "#1e7e34",
   },
   onlineIndicator: {
     position: "absolute",
     bottom: 2,
     right: 2,
-    width: 14,
-    height: 14,
+    width: 8,
+    height: 8,
     borderRadius: 7,
     backgroundColor: "#4caf50",
     borderWidth: 2,
     borderColor: "#fff",
+  },
+  // iconContainer: {
+  //   width: 36,
+  //   height: 36,
+  //   borderRadius: 18, // makes it circular
+  //   justifyContent: "center",
+  //   alignItems: "center",
+  // },
+  iconWrapper: {
+    position: "relative",
+    width: 15,
+    height: 15,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#E5E7EB",
+  },
+
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#EF4444",
+    borderRadius: 5,
+    minWidth: 5,
+    height: 5,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+
+  badgeText: {
+    color: "#fff",
+    fontSize: 2,
+    fontWeight: "bold",
   },
   profileTextContainer: {
     marginLeft: 12,
@@ -1070,7 +1182,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderTopWidth: 1,
     borderTopColor: "#d0e8d0",
-    paddingVertical: 7,
+    // paddingVertical: 7,
+    width: "100%",
     elevation: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
@@ -1087,7 +1200,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 25,
-    marginRight: 10,
+    // marginRight: 1,
     alignItems: "center",
     justifyContent: "center",
     // borderWidth: 1,
@@ -1243,6 +1356,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
     marginBottom: 8,
+  },
+  username: {
+    marginTop: 10,
+    fontSize: 11,
+    color: "#2563EB",
+    fontWeight: "600",
+    textShadowColor: "transparent",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 0,
   },
   primaryBtn: {
     marginTop: 16,

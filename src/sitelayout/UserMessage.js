@@ -37,6 +37,8 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     paddingHorizontal: 16,
+    height:40,
+    margin:5
   },
   message: {
     padding: 12,
@@ -56,7 +58,7 @@ const styles = StyleSheet.create({
     borderColor: '#f5c6cb',
   },
   messageText: {
-    fontSize: 14,
+    fontSize: 10,
     color: '#333',
   },
   boldText: {
