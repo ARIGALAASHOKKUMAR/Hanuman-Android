@@ -48,9 +48,14 @@ const LoginCommon = ({ navigation }) => {
   });
 
   const incidentOptions = [
-     { id: "0", title: "General Incidents", icon: "elephant-outline", type: "general" },
-    { id: "1", title: "Gaja Praja", icon: "elephant-outline", type: "gaja" },
+    {
+      id: "0",
+      title: "General Incidents",
+      icon: "elephant-outline",
+      type: "general",
+    },
     { id: "6", title: "Sarpa Mithra", icon: "snake-outline", type: "sarpa" },
+    { id: "1", title: "Gaja Praja", icon: "elephant-outline", type: "gaja" },
     { id: "5", title: "Monkey Menace", icon: "monkey-outline", type: "monkey" },
     // Add more as needed
   ];
@@ -417,17 +422,12 @@ const LoginCommon = ({ navigation }) => {
             <Text style={styles.footerText}>
               Secure access to your application
             </Text>
-
             <View style={styles.incidentSection}>
-              <FlatList
-                data={incidentOptions}
-                keyExtractor={(item) => item.id}
-                horizontal={true}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.incidentList}
-                renderItem={({ item }) => (
+              <View style={styles.incidentList}>
+                {incidentOptions.map((item) => (
                   <TouchableOpacity
-                    style={styles.incidentCard} // Add marginRight in your styles
+                    key={item.id}
+                    style={styles.incidentCard}
                     onPress={() =>
                       navigation.navigate("IncidentReporting", {
                         item: item,
@@ -435,13 +435,10 @@ const LoginCommon = ({ navigation }) => {
                     }
                     activeOpacity={0.7}
                   >
-                    <Button
-                      title={item.title}
-                      onPress={() => navigation.navigate("IncidentReporting",{  item: item})}
-                    />
+                    <Text style={styles.incidentCardText}>{item.title}</Text>
                   </TouchableOpacity>
-                )}
-              />
+                ))}
+              </View>
             </View>
           </View>
 
@@ -456,6 +453,34 @@ const LoginCommon = ({ navigation }) => {
 export default LoginCommon;
 
 const styles = StyleSheet.create({
+  incidentSection: {
+    width: "100%",
+    paddingHorizontal: 16,
+  },
+  incidentList: {
+    flexDirection: "row",
+    flexWrap: "wrap", // Changed from "nowrap" to "wrap"
+    justifyContent: "space-between", // Distribute space between items
+    gap: 12,
+  },
+  incidentCard: {
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    borderWidth: 1,
+  },
+  incidentCardText: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "white",
+    backgroundColor: "orange",
+    padding: 3,
+    borderRadius: 4,
+    minWidth:120,
+    textAlign:"center"
+  },
+
   flexOne: {
     flex: 1,
   },
