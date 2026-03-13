@@ -142,6 +142,7 @@ const LoginCommon = ({ navigation }) => {
       storedCaptchaId,
       latitude: null,
       longitude: null,
+      loginSource: "mobile",
     };
 
     try {
@@ -342,14 +343,8 @@ const LoginCommon = ({ navigation }) => {
                     errors.deptCaptcha ? styles.inputWrapperError : null,
                   ]}
                 >
-                  <Ionicons
-                    name="key-outline"
-                    size={20}
-                    color="#5f6f94"
-                    style={styles.leftIcon}
-                  />
                   <TextInput
-                    placeholder="Enter Captcha"
+                    placeholder="Captcha"
                     placeholderTextColor="#94a3b8"
                     style={styles.input}
                     value={deptCaptcha}
@@ -413,7 +408,7 @@ const LoginCommon = ({ navigation }) => {
                 </>
               )}
             </TouchableOpacity>
-{/* 
+            {/* 
             <Text style={styles.footerText}>
               Secure access to your application
             </Text> */}
