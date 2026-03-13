@@ -135,8 +135,8 @@ const showNativeMessage = (msg, type) => {
   }
 };
 
-export const CONTEXT_NAME = "H.A.N.U.M.A.N.";
-export const CONTEXT_HEADING = "H.A.N.U.M.A.N.";
+export const CONTEXT_NAME = "LABOUR DEPARTMENT";
+export const CONTEXT_HEADING = "LABOUR DEPARTMENT";
 export const BASE_SERVER_URL = "https://forests.ap.gov.in/uploads/";
 export const ACC_YEAR = new Date().getFullYear().toString();
 export const LOGIN_END_POINT = "/api/open/login";

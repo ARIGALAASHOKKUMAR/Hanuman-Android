@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Alert,
   Image,
@@ -14,6 +14,7 @@ import {
   StatusBar,
   Button,
   FlatList,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -32,6 +33,8 @@ import {
   showSuccessToast,
 } from "../utils/showToast";
 
+const { width } = Dimensions.get("window");
+
 const LoginCommon = ({ navigation }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -46,18 +49,6 @@ const LoginCommon = ({ navigation }) => {
     password: "",
     deptCaptcha: "",
   });
-
-  const incidentOptions = [
-    {
-      id: "0",
-      title: "General Incidents",
-      icon: "elephant-outline",
-      type: "general",
-    },
-    { id: "6", title: "Sarpa Mithra", icon: "snake-outline", type: "sarpa" },
-    { id: "1", title: "Gaja Praja", icon: "elephant-outline", type: "gaja" },
-    { id: "5", title: "Monkey Menace", icon: "monkey-outline", type: "monkey" },
-  ];
 
   const dispatch = useDispatch();
 
@@ -224,7 +215,7 @@ const LoginCommon = ({ navigation }) => {
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="#edf4ff" />
+      <StatusBar barStyle="light-content" backgroundColor="#1e3a5f" />
 
       <KeyboardAvoidingView
         style={styles.flexOne}
@@ -238,24 +229,55 @@ const LoginCommon = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
           bounces={false}
         >
+          {/* Background Image */}
+          <Image
+            source={{ uri: "https://labour.dev.nidhi.apcfss.in/files/labourdept/secondslide.jpeg" }}
+            style={styles.backgroundImage}
+          />
+          
+          {/* Dark Overlay */}
+          <View style={styles.overlay} />
+          
+          <View style={styles.backgroundLayerTop} />
+          <View style={styles.backgroundLayerMiddle} />
           <View style={styles.topDecorationOne} />
           <View style={styles.topDecorationTwo} />
           <View style={styles.bottomDecoration} />
+          <View style={styles.bottomDecorationTwo} />
+
+          {/* Hero Image */}
+          <View style={styles.heroImageWrapper}>
+            <Image 
+              source={{ uri: "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?w=600&auto=format&fit=crop" }}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
+            <View style={styles.heroImageOverlay}>
+              <Text style={styles.heroImageText}>DEPARTMENT OF LABOUR</Text>
+              <Text style={styles.heroImageSubText}>Government of Andhra Pradesh</Text>
+            </View>
+          </View>
 
           <View style={styles.card}>
+            <View style={styles.cardGlow} />
+
+            {/* Labour Department Logo/Header */}
             <View style={styles.logoWrapper}>
-              <View style={styles.logoCircle}>
-                <Ionicons
-                  name="shield-checkmark-outline"
-                  size={34}
-                  color="#fff"
-                />
+              <View style={styles.logoOuterRing}>
+                <View style={styles.logoCircle}>
+                  <Ionicons
+                    name="briefcase-outline"
+                    size={34}
+                    color="#fff"
+                  />
+                </View>
               </View>
             </View>
 
+            <Text style={styles.deptName}>DEPARTMENT OF LABOUR</Text>
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>
-              Sign in to continue to your account
+              Sign in to access your labour department account
             </Text>
 
             <View style={styles.fieldBlock}>
@@ -326,7 +348,7 @@ const LoginCommon = ({ navigation }) => {
                   <Ionicons
                     name={showPassword ? "eye-outline" : "eye-off-outline"}
                     size={22}
-                    color="#3856b5"
+                    color="#1e3a5f"
                   />
                 </TouchableOpacity>
               </View>
@@ -376,7 +398,7 @@ const LoginCommon = ({ navigation }) => {
                   style={styles.refreshBtn}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="refresh" size={22} color="#3856b5" />
+                  <Ionicons name="refresh" size={22} color="#1e3a5f" />
                 </TouchableOpacity>
               </View>
 
@@ -408,10 +430,6 @@ const LoginCommon = ({ navigation }) => {
                 </>
               )}
             </TouchableOpacity>
-            {/* 
-            <Text style={styles.footerText}>
-              Secure access to your application
-            </Text> */}
           </View>
 
           <View style={styles.bottomSpacing} />
@@ -426,77 +444,222 @@ export default LoginCommon;
 const styles = StyleSheet.create({
   flexOne: {
     flex: 1,
+    
   },
+
   screen: {
     flex: 1,
-    backgroundColor: "#edf4ff",
+    backgroundColor: "#1e3a5f",
+    backgroundImage: "https://labour.dev.nidhi.apcfss.in/files/labourdept/secondslide.jpeg",
   },
+
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 20,
     paddingVertical: 28,
+    position: "relative",
+    overflow: "hidden",
+  },
+
+  backgroundImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    opacity: 0.15,
+  },
+
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(30, 58, 95, 0.85)",
+  },
+
+  backgroundLayerTop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "42%",
+    backgroundColor: "#1e3a5f",
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+  },
+
+  backgroundLayerMiddle: {
+    position: "absolute",
+    top: "24%",
+    left: -20,
+    right: -20,
+    height: 180,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 50,
+    transform: [{ rotate: "-6deg" }],
   },
 
   topDecorationOne: {
     position: "absolute",
-    top: -30,
+    top: -35,
     right: -25,
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    backgroundColor: "rgba(74,108,247,0.14)",
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
+
   topDecorationTwo: {
     position: "absolute",
-    top: 90,
-    left: -50,
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: "rgba(28,61,143,0.08)",
-  },
-  bottomDecoration: {
-    position: "absolute",
-    bottom: 40,
-    right: -40,
+    top: 95,
+    left: -48,
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: "rgba(74,108,247,0.08)",
+    backgroundColor: "rgba(173,216,255,0.16)",
+  },
+
+  bottomDecoration: {
+    position: "absolute",
+    bottom: 55,
+    right: -45,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: "rgba(255,255,255,0.10)",
+  },
+
+  bottomDecorationTwo: {
+    position: "absolute",
+    bottom: 10,
+    left: -35,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(173,216,255,0.13)",
+  },
+
+  // Hero Image Styles
+  heroImageWrapper: {
+    height: 160,
+    width: "100%",
+    borderRadius: 20,
+    overflow: "hidden",
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.3)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+    position: "relative",
+  },
+
+  heroImage: {
+    width: "100%",
+    height: "100%",
+  },
+
+  heroImageOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(30, 58, 95, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 15,
+  },
+
+  heroImageText: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "center",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+    marginBottom: 5,
+  },
+
+  heroImageSubText: {
+    color: "#fff",
+    fontSize: 14,
+    textAlign: "center",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    opacity: 0.9,
   },
 
   card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 28,
+    backgroundColor: "rgba(255,255,255,0.98)",
+    borderRadius: 30,
     paddingHorizontal: 22,
     paddingTop: 30,
     paddingBottom: 24,
-    shadowColor: "#1c3d8f",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.14,
-    shadowRadius: 24,
-    elevation: 10,
+    shadowColor: "#0a1a2e",
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.22,
+    shadowRadius: 22,
+    elevation: 12,
     borderWidth: 1,
-    borderColor: "#eef2ff",
+    borderColor: "rgba(255,255,255,0.8)",
+    overflow: "hidden",
+  },
+
+  cardGlow: {
+    position: "absolute",
+    top: -30,
+    right: -30,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(30, 58, 95, 0.10)",
   },
 
   logoWrapper: {
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 10,
   },
+
+  logoOuterRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "rgba(30, 58, 95, 0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
   logoCircle: {
     width: 78,
     height: 78,
     borderRadius: 39,
-    backgroundColor: "#4a6cf7",
+    backgroundColor: "#1e3a5f",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#4a6cf7",
+    shadowColor: "#1e3a5f",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.32,
     shadowRadius: 14,
     elevation: 6,
+  },
+
+  deptName: {
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+    color: "#1e3a5f",
+    marginBottom: 4,
+    letterSpacing: 1,
   },
 
   title: {
@@ -507,63 +670,77 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     letterSpacing: 0.3,
   },
+
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#6b7280",
     textAlign: "center",
-    marginBottom: 26,
-    lineHeight: 22,
+    marginBottom: 24,
+    lineHeight: 20,
   },
 
   fieldBlock: {
     marginBottom: 16,
   },
 
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#334155",
+    marginBottom: 8,
+    marginLeft: 4,
+    letterSpacing: 0.2,
+  },
+
   inputWrapper: {
     minHeight: 56,
-    backgroundColor: "#f8faff",
-    borderRadius: 16,
+    backgroundColor: "#f8fbff",
+    borderRadius: 18,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: "#dbe4ff",
+    borderColor: "#d7e3ff",
     flexDirection: "row",
     alignItems: "center",
-    shadowColor: "#4a6cf7",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 1,
+    shadowColor: "#1e3a5f",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
   },
+
   captchaInputWrapper: {
     flex: 1.2,
     minHeight: 56,
-    backgroundColor: "#f8faff",
-    borderRadius: 16,
+    backgroundColor: "#f8fbff",
+    borderRadius: 18,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: "#dbe4ff",
+    borderColor: "#d7e3ff",
     flexDirection: "row",
     alignItems: "center",
-    shadowColor: "#4a6cf7",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 1,
+    shadowColor: "#1e3a5f",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
   },
+
   inputWrapperError: {
     borderColor: "#ef4444",
-    backgroundColor: "#fff7f7",
+    backgroundColor: "#fff6f6",
   },
 
   leftIcon: {
     marginRight: 10,
   },
+
   input: {
     flex: 1,
     color: "#111827",
     fontSize: 15,
     paddingVertical: 14,
   },
+
   eyeButton: {
     paddingLeft: 10,
     paddingVertical: 6,
@@ -574,60 +751,73 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
+
   captchaBox: {
     flex: 1,
     minHeight: 56,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#dbe4ff",
-    backgroundColor: "#f8faff",
+    borderColor: "#d7e3ff",
+    backgroundColor: "#f8fbff",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 8,
-  },
-  captchaImage: {
-    width: "100%",
-    height: 42,
-  },
-  captchaPlaceholderText: {
-    color: "#6b7280",
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  refreshBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: "#f8faff",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#dbe4ff",
-    shadowColor: "#4a6cf7",
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: "#1e3a5f",
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 1,
   },
 
-  loginButton: {
+  captchaImage: {
     width: "100%",
+    height: 42,
+  },
+
+  captchaPlaceholderText: {
+    color: "#6b7280",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+
+  refreshBtn: {
+    width: 56,
     height: 56,
-    backgroundColor: "#4a6cf7",
-    borderRadius: 16,
+    borderRadius: 18,
+    backgroundColor: "#eef4ff",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 10,
-    flexDirection: "row",
-    shadowColor: "#4a6cf7",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 6,
+    borderWidth: 1,
+    borderColor: "#d7e3ff",
+    shadowColor: "#1e3a5f",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 9,
+    elevation: 2,
   },
+
+  loginButton: {
+    width: "100%",
+    height: 58,
+    backgroundColor: "#1e3a5f",
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+    flexDirection: "row",
+    shadowColor: "#0f2a40",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    elevation: 7,
+    borderWidth: 1,
+    borderColor: "#2c4b75",
+  },
+
   loginButtonDisabled: {
     opacity: 0.8,
   },
+
   loginText: {
     color: "#fff",
     fontSize: 18,
@@ -640,48 +830,19 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginLeft: 4,
     fontSize: 12,
-    fontWeight: "500",
+    fontWeight: "600",
   },
 
   footerText: {
     textAlign: "center",
-    color: "#94a3b8",
+    color: "#7c8aa5",
     fontSize: 12,
     marginTop: 18,
-    fontWeight: "500",
+    fontWeight: "600",
+    letterSpacing: 0.2,
   },
 
   bottomSpacing: {
     height: 30,
-  },
-
-  incidentSection: {
-    width: "100%",
-    paddingHorizontal: 16,
-  },
-  incidentList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  incidentCard: {
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    marginRight: 12,
-  },
-  incidentCardText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "white",
-    backgroundColor: "orange",
-    padding: 3,
-    borderRadius: 4,
-    minWidth: 100,
-    height: 30,
-    textAlign: "center",
   },
 });

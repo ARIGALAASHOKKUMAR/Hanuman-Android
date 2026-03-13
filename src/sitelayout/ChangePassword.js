@@ -73,8 +73,6 @@ const ChangePassword = () => {
   const submitDetails = async (values, { resetForm }) => {
 
       const response = await commonAPICall(CHANGE_PASSWORD, values,"post",dispatch);
-
-      console.log("reee",response.data);
       
 
       if (response.status === 200) {

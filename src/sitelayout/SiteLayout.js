@@ -460,7 +460,7 @@ const SiteLayout = ({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.logoContainer}>
-              <Text style={styles.headerTitle}>H.A.N.U.M.A.N.</Text>
+              <Text style={styles.headerTitle}>LABOUR DEPARTMENT</Text>
               <Text style={styles.username}>Welcome: {username}</Text>
             </View>
           </View>
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: "green",
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "bold",
     letterSpacing: 0.5,
     textShadowColor: "rgba(0,0,0,0.2)",
