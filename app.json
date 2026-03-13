@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "H.A.N.U.M.A.N",
-    "slug": "H.A.N.U.M.A.N",
+    "name": "LABOUR DEPT",
+    "slug": "LABOUR DEPT",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo_new.png",
+    "icon": "./assets/labour_log.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -20,7 +20,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo_new.png",
+        "foregroundImage": "./assets/labour_log.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.ashokarigala.MyEcommerceAppp"
