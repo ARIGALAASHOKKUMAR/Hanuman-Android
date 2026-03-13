@@ -573,6 +573,10 @@ const SiteLayout = ({
           onScrollBeginDrag={resetActivity}
           onTouchStart={resetActivity}
           onMomentumScrollBegin={resetActivity}
+          scrollEventThrottle={16} // Add this for smoother scrolling
+          removeClippedSubviews={true} // Improve performance by removing off-screen views
+          maxToRenderPerBatch={10} // Limit rendering batch size
+          windowSize={5}
         >
           {children}
         </ScrollView>
