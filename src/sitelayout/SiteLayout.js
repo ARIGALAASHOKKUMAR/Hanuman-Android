@@ -21,7 +21,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import BreadCrumb from "./BreadCrumb";
-import { hideLoader, hideMessage, logOut, showModal, hideModal } from "../actions";
+import {
+  hideLoader,
+  hideMessage,
+  logOut,
+  showModal,
+  hideModal,
+} from "../actions";
 import {
   LOGOUT_ALL_END_POINT,
   LOGOUT_ALL_EXCEPT_THIS_END_POINT,
@@ -33,7 +39,7 @@ import SessionTime from "./SessionTime";
 import Icon from "react-native-vector-icons/Feather";
 import { Ionicons } from "@expo/vector-icons";
 import UserMessage from "./UserMessage";
-import { showSuccessToast } from "../utils/showToast";
+import { showErrorToast, showSuccessToast } from "../utils/showToast";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import IconFA from "react-native-vector-icons/FontAwesome";
 
@@ -168,6 +174,8 @@ const SiteLayout = ({
     try {
       const response = await myAxios.get(SERVICE_AUTH_END_POINT);
       if (response.status === 200) {
+        console.log("Concurrent login check response", response);
+
         const activeCount = parseInt(
           response?.data?.activeusers?.count || 0,
           10,
@@ -183,7 +191,10 @@ const SiteLayout = ({
         error?.response?.data?.message ||
         error?.message ||
         "Something went wrong";
-      showSuccessToast("Error", `Concurrent login check failed: ${message}`);
+
+      console.log("Concurrent login check error", message);
+
+      showErrorToast(`${message}`);
       navigation?.reset?.({
         index: 0,
         routes: [{ name: "Login" }],
@@ -192,40 +203,41 @@ const SiteLayout = ({
   }, []);
 
   // Idle Timeout Effect
-  useEffect(() => {
-    const resetActivityTimeout = () => {
-      setLastActivity(Date.now());
-      idlePopupShownRef.current = false;
-    };
+  // useEffect(() => {
+  //   const resetActivityTimeout = () => {
+  //     setLastActivity(Date.now());
+  //     idlePopupShownRef.current = false;
+  //   };
 
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        resetActivityTimeout();
-      }
-      appState.current = nextAppState;
-    });
+  //   const subscription = AppState.addEventListener('change', (nextAppState) => {
+  //     if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+  //       resetActivityTimeout();
+  //     }
+  //     appState.current = nextAppState;
+  //   });
 
-    const intervalId = setInterval(() => {
-      if (Date.now() - lastActivity >= 1 * 60 * 1000 && !idlePopupShownRef.current) {
-        showLogoutPopupWarning();
-      }
-    }, 1000);
+  //   const intervalId = setInterval(() => {
+  //     if (Date.now() - lastActivity >= 1 * 60 * 1000 && !idlePopupShownRef.current) {
+  //       showLogoutPopupWarning();
+  //     }
+  //   }, 1000);
 
-    return () => {
-      clearInterval(intervalId);
-      subscription.remove();
-    };
-  }, [lastActivity, dispatch]);
+  //   return () => {
+  //     clearInterval(intervalId);
+  //     subscription.remove();
+  //   };
+  // }, [lastActivity, dispatch]);
 
   const showLogoutPopupWarning = () => {
     idlePopupShownRef.current = true;
-    
+
     dispatch(
       showModal(
         <View style={styles.idleModalContent}>
           <Text style={styles.idleModalIcon}>⚠️</Text>
           <Text style={styles.idleModalText}>
-            It seems you've been idle for more than 15 minutes. Click 'Stay Connected' to stay logged in or 'Logout' to log out.
+            It seems you've been idle for more than 15 minutes. Click 'Stay
+            Connected' to stay logged in or 'Logout' to log out.
           </Text>
           <View style={styles.idleModalButtons}>
             <TouchableOpacity
@@ -235,22 +247,22 @@ const SiteLayout = ({
               <IconFA name="power-off" size={16} color="black" />
               <Text style={styles.buttonText}> Logout</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[styles.idleButton, styles.stayConnectedButton]}
               onPress={() => {
                 serviceAuthentication();
                 idlePopupShownRef.current = false;
                 dispatch(hideModal());
-                resetActivity()
+                resetActivity();
               }}
             >
               <IconFA name="check" size={16} color="black" />
               <Text style={styles.buttonText}> Stay Connected</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      )
+        </View>,
+      ),
     );
   };
 
@@ -448,9 +460,7 @@ const SiteLayout = ({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.logoContainer}>
-              <Text style={styles.headerTitle}>
-                H.A.N.U.M.A.N.
-              </Text>
+              <Text style={styles.headerTitle}>H.A.N.U.M.A.N.</Text>
               <Text style={styles.username}>Welcome: {username}</Text>
             </View>
           </View>
@@ -1197,8 +1207,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  bottomNavItemActive: {
-  },
+  bottomNavItemActive: {},
   bottomNavText: {
     fontSize: 13,
     fontWeight: "700",
@@ -1473,93 +1482,93 @@ const styles = StyleSheet.create({
   // Idle Modal Styles
   idleModalContent: {
     padding: 20,
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    alignItems: "center",
+    backgroundColor: "#fff",
     borderRadius: 10,
   },
   idleModalIcon: {
     fontSize: 40,
     marginBottom: 15,
-    color: '#FF7900',
+    color: "#FF7900",
   },
   idleModalText: {
     fontSize: 16,
-    color: '#333',
-    textAlign: 'center',
+    color: "#333",
+    textAlign: "center",
     marginBottom: 25,
     lineHeight: 24,
   },
   idleModalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
   },
   idleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
     minWidth: 120,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
     fontSize: 14,
   },
   // Add these to your existing StyleSheet, preferably after the existing modal styles
 
-idleModalContent: {
-  padding: 20,
-  alignItems: 'center',
-  backgroundColor: '#fff',
-  borderRadius: 10,
-},
-idleModalIcon: {
-  fontSize: 40,
-  marginBottom: 15,
-  color: '#FF7900',
-},
-idleModalText: {
-  fontSize: 16,
-  color: '#333',
-  textAlign: 'center',
-  marginBottom: 25,
-  lineHeight: 24,
-  paddingHorizontal: 10,
-},
-idleModalButtons: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  width: '100%',
-  paddingHorizontal: 10,
-},
-idleButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  paddingVertical: 12,
-  paddingHorizontal: 20,
-  borderRadius: 8,
-  flex: 1,
-  marginHorizontal: 5,
-  elevation: 2,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.1,
-  shadowRadius: 2,
-},
-logoutButton: {
-  backgroundColor: '#d9534f',
-},
-stayConnectedButton: {
-  backgroundColor: '#28a745',
-},
-buttonText: {
-  color: '#fff',
-  fontWeight: '600',
-  fontSize: 14,
-  marginLeft: 8,
-},
+  idleModalContent: {
+    padding: 20,
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+  },
+  idleModalIcon: {
+    fontSize: 40,
+    marginBottom: 15,
+    color: "#FF7900",
+  },
+  idleModalText: {
+    fontSize: 16,
+    color: "#333",
+    textAlign: "center",
+    marginBottom: 25,
+    lineHeight: 24,
+    paddingHorizontal: 10,
+  },
+  idleModalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    paddingHorizontal: 10,
+  },
+  idleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 5,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  logoutButton: {
+    backgroundColor: "#d9534f",
+  },
+  stayConnectedButton: {
+    backgroundColor: "#28a745",
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 14,
+    marginLeft: 8,
+  },
 });

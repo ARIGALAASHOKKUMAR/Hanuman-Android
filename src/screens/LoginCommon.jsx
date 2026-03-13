@@ -57,7 +57,6 @@ const LoginCommon = ({ navigation }) => {
     { id: "6", title: "Sarpa Mithra", icon: "snake-outline", type: "sarpa" },
     { id: "1", title: "Gaja Praja", icon: "elephant-outline", type: "gaja" },
     { id: "5", title: "Monkey Menace", icon: "monkey-outline", type: "monkey" },
-    // Add more as needed
   ];
 
   const dispatch = useDispatch();
@@ -224,7 +223,7 @@ const LoginCommon = ({ navigation }) => {
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="#eef3ff" />
+      <StatusBar barStyle="dark-content" backgroundColor="#edf4ff" />
 
       <KeyboardAvoidingView
         style={styles.flexOne}
@@ -240,6 +239,7 @@ const LoginCommon = ({ navigation }) => {
         >
           <View style={styles.topDecorationOne} />
           <View style={styles.topDecorationTwo} />
+          <View style={styles.bottomDecoration} />
 
           <View style={styles.card}>
             <View style={styles.logoWrapper}>
@@ -258,7 +258,6 @@ const LoginCommon = ({ navigation }) => {
             </Text>
 
             <View style={styles.fieldBlock}>
-              <Text style={styles.label}>User Name</Text>
               <View
                 style={[
                   styles.inputWrapper,
@@ -293,7 +292,6 @@ const LoginCommon = ({ navigation }) => {
             </View>
 
             <View style={styles.fieldBlock}>
-              <Text style={styles.label}>Password</Text>
               <View
                 style={[
                   styles.inputWrapper,
@@ -337,57 +335,54 @@ const LoginCommon = ({ navigation }) => {
             </View>
 
             <View style={styles.fieldBlock}>
-              <Text style={styles.label}>Captcha</Text>
-              <View style={styles.captchaContainer}>
-                {captchaImage ? (
-                  <Image
-                    source={{ uri: captchaImage }}
-                    style={styles.captchaImage}
-                    resizeMode="contain"
+              <View style={styles.captchaRow}>
+                <View
+                  style={[
+                    styles.captchaInputWrapper,
+                    errors.deptCaptcha ? styles.inputWrapperError : null,
+                  ]}
+                >
+                  <Ionicons
+                    name="key-outline"
+                    size={20}
+                    color="#5f6f94"
+                    style={styles.leftIcon}
                   />
-                ) : (
-                  <Text>Captcha</Text>
-                )}
+                  <TextInput
+                    placeholder="Enter Captcha"
+                    placeholderTextColor="#94a3b8"
+                    style={styles.input}
+                    value={deptCaptcha}
+                    onChangeText={(text) => {
+                      setDeptCaptcha(text);
+                      if (errors.deptCaptcha) {
+                        setErrors({ ...errors, deptCaptcha: "" });
+                      }
+                    }}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                  />
+                </View>
+
+                <View style={styles.captchaBox}>
+                  {captchaImage ? (
+                    <Image
+                      source={{ uri: captchaImage }}
+                      style={styles.captchaImage}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Text style={styles.captchaPlaceholderText}>Captcha</Text>
+                  )}
+                </View>
 
                 <TouchableOpacity
                   onPress={generateCaptcha}
                   style={styles.refreshBtn}
+                  activeOpacity={0.8}
                 >
                   <Ionicons name="refresh" size={22} color="#3856b5" />
                 </TouchableOpacity>
-              </View>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  errors.deptCaptcha ? styles.inputWrapperError : null,
-                ]}
-              >
-                <Ionicons
-                  name="key-outline"
-                  size={20}
-                  color="#5f6f94"
-                  style={styles.leftIcon}
-                />
-                <TextInput
-                  placeholder="Enter Captcha"
-                  placeholderTextColor="#94a3b8"
-                  style={styles.input}
-                  value={deptCaptcha}
-                  onChangeText={(text) => {
-                    // Filter to allow only numbers if you want strictly numeric
-                    const numericText = text.replace(/[^0-9]/g, "");
-                    setDeptCaptcha(numericText);
-                    if (errors.deptCaptcha) {
-                      setErrors({ ...errors, deptCaptcha: "" });
-                    }
-                  }}
-                  maxLength={6}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  keyboardType="number-pad" // Changed to number-pad for better numeric input
-                  returnKeyType="done"
-                  onSubmitEditing={getLogin} // Submit form when done key is pressed
-                />
               </View>
 
               {errors.deptCaptcha ? (
@@ -418,31 +413,12 @@ const LoginCommon = ({ navigation }) => {
                 </>
               )}
             </TouchableOpacity>
-
+{/* 
             <Text style={styles.footerText}>
               Secure access to your application
-            </Text>
-            <View style={styles.incidentSection}>
-              <View style={styles.incidentList}>
-                {incidentOptions.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.incidentCard}
-                    onPress={() =>
-                      navigation.navigate("IncidentReporting", {
-                        item: item,
-                      })
-                    }
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.incidentCardText}>{item.title}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+            </Text> */}
           </View>
 
-          {/* Add extra space at bottom for keyboard */}
           <View style={styles.bottomSpacing} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -453,46 +429,12 @@ const LoginCommon = ({ navigation }) => {
 export default LoginCommon;
 
 const styles = StyleSheet.create({
-  incidentSection: {
-    width: "100%",
-    paddingHorizontal: 16,
-  },
-  incidentList: {
-    flexDirection: "row",
-    flexWrap: "wrap", // Changed from "nowrap" to "wrap"
-    justifyContent: "space-between", // Distribute space between items
-    gap: 12,
-  },
-  incidentCard: {
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    borderWidth: 1,
-  },
-  incidentCardText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "white",
-    backgroundColor: "orange",
-    padding: 3,
-    borderRadius: 4,
-    minWidth:100,
-    height:30,
-    textAlign:"center",
-  },
-
   flexOne: {
     flex: 1,
   },
   screen: {
     flex: 1,
-    backgroundColor: "#eef3ff",
-  },
-
-  incidentCard: {
-    marginRight: 12, // Add space between cards
-    // ... your existing styles
+    backgroundColor: "#edf4ff",
   },
   scrollContainer: {
     flexGrow: 1,
@@ -500,89 +442,124 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 28,
   },
+
   topDecorationOne: {
     position: "absolute",
-    top: -40,
-    right: -20,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "rgba(74,108,247,0.12)",
+    top: -30,
+    right: -25,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: "rgba(74,108,247,0.14)",
   },
   topDecorationTwo: {
     position: "absolute",
-    top: 70,
+    top: 90,
     left: -50,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 130,
+    height: 130,
+    borderRadius: 65,
     backgroundColor: "rgba(28,61,143,0.08)",
   },
+  bottomDecoration: {
+    position: "absolute",
+    bottom: 40,
+    right: -40,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "rgba(74,108,247,0.08)",
+  },
+
   card: {
     backgroundColor: "#ffffff",
-    borderRadius: 24,
+    borderRadius: 28,
     paddingHorizontal: 22,
-    paddingTop: 28,
+    paddingTop: 30,
     paddingBottom: 24,
     shadowColor: "#1c3d8f",
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 22,
-    elevation: 8,
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: "#eef2ff",
   },
+
   logoWrapper: {
     alignItems: "center",
     marginBottom: 14,
   },
   logoCircle: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
+    width: 78,
+    height: 78,
+    borderRadius: 39,
     backgroundColor: "#4a6cf7",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#4a6cf7",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.32,
     shadowRadius: 14,
     elevation: 6,
   },
+
   title: {
     fontSize: 30,
     fontWeight: "800",
     textAlign: "center",
     color: "#111827",
     marginBottom: 6,
+    letterSpacing: 0.3,
   },
   subtitle: {
     fontSize: 15,
     color: "#6b7280",
     textAlign: "center",
     marginBottom: 26,
+    lineHeight: 22,
   },
+
   fieldBlock: {
-    marginBottom: 14,
+    marginBottom: 16,
   },
-  label: {
-    color: "#14213d",
-    fontSize: 15,
-    marginBottom: 8,
-    fontWeight: "700",
-  },
+
   inputWrapper: {
     minHeight: 56,
     backgroundColor: "#f8faff",
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: "#dbe4ff",
     flexDirection: "row",
     alignItems: "center",
+    shadowColor: "#4a6cf7",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  captchaInputWrapper: {
+    flex: 1.2,
+    minHeight: 56,
+    backgroundColor: "#f8faff",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#dbe4ff",
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#4a6cf7",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
   },
   inputWrapperError: {
     borderColor: "#ef4444",
     backgroundColor: "#fff7f7",
   },
+
   leftIcon: {
     marginRight: 10,
   },
@@ -596,37 +573,48 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     paddingVertical: 6,
   },
-  captchaContainer: {
+
+  captchaRow: {
     flexDirection: "row",
-    // alignItems: "center",
-    gap: 2,
-    marginBottom: 12,
+    alignItems: "center",
+    gap: 10,
   },
-  captchaImage: {
+  captchaBox: {
     flex: 1,
-    height: 50,
-    // backgroundColor: "#f8faff",
-    // borderColor: "#dbe4ff",
-  },
-  captchaPlaceholder: {
+    minHeight: 56,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#dbe4ff",
+    backgroundColor: "#f8faff",
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 8,
+  },
+  captchaImage: {
+    width: "100%",
+    height: 42,
   },
   captchaPlaceholderText: {
     color: "#6b7280",
     fontWeight: "600",
+    fontSize: 13,
   },
   refreshBtn: {
-    marginLeft: 12,
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     backgroundColor: "#f8faff",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#dbe4ff",
+    shadowColor: "#4a6cf7",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
   },
+
   loginButton: {
     width: "100%",
     height: 56,
@@ -634,7 +622,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 10,
     flexDirection: "row",
     shadowColor: "#4a6cf7",
     shadowOffset: { width: 0, height: 8 },
@@ -651,6 +639,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.3,
   },
+
   errorText: {
     color: "#ef4444",
     marginTop: 6,
@@ -658,11 +647,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
   },
+
   footerText: {
     textAlign: "center",
     color: "#94a3b8",
     fontSize: 12,
     marginTop: 18,
     fontWeight: "500",
+  },
+
+  bottomSpacing: {
+    height: 30,
+  },
+
+  incidentSection: {
+    width: "100%",
+    paddingHorizontal: 16,
+  },
+  incidentList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  incidentCard: {
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    borderWidth: 1,
+    marginRight: 12,
+  },
+  incidentCardText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "white",
+    backgroundColor: "orange",
+    padding: 3,
+    borderRadius: 4,
+    minWidth: 100,
+    height: 30,
+    textAlign: "center",
   },
 });

@@ -16,9 +16,13 @@ import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Ionicons } from "@expo/vector-icons";
+import { useDispatch } from "react-redux";
+import axios from "axios";
+
 import {
   commonAPICall,
   CONTEXT_HEADING,
@@ -26,15 +30,349 @@ import {
   GETINCIDENTS,
   VOLUNTEERMOBILEOTP,
   createIncident,
+  IMG_UPLOAD_URL,
+  IMG_DOWNLOAD_URL,
 } from "../utils/utils";
-import { useDispatch } from "react-redux";
 
-const IncidentReporting = ({route}) => {
+import { showLoader, hideLoader } from "../actions";
+import { showErrorToast, showSuccessToast } from "../utils/showToast";
 
-    const { item } = route.params;
+/* ===========================
+   IMAGE UPLOAD CONFIGURATION
+=========================== */
+// const IMG_UPLOAD_URL = process.env.REACT_APP_IMG_UPLOAD_URL;
+// const IMG_DOWNLOAD_URL = process.env.REACT_APP_IMG_DOWNLOAD_URL;
+const ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
+const MAX_FILE_SIZE = 20971520; // 20MB
 
-    console.log("iteem",item.id);
+/* ===========================
+   IMAGE UPLOAD HELPER FUNCTIONS
+=========================== */
+
+/**
+ * Validate file type and size for native
+ */
+const validateFileTypeAndSizeNative = (file, maxSize) => {
+  if (!file) {
+    Alert.alert("Warning", "Please select an image");
+    return false;
+  }
+
+  // Check file extension
+  const fileName = file.name || "";
+  const fileExt = fileName.split(".").pop()?.toLowerCase() || "";
+  
+  if (!ALLOWED_IMAGE_EXTENSIONS.includes(fileExt)) {
+    Alert.alert(
+      "Invalid file type",
+      "Please select JPG, JPEG or PNG image only"
+    );
+    return false;
+  }
+
+  // Check file size
+  if (file.size && Number(file.size) > Number(maxSize)) {
+    Alert.alert(
+      "File too large",
+      `Please select a file smaller than ${Math.round(
+        Number(maxSize) / (1024 * 1024)
+      )} MB`
+    );
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * Create a proper file object for React Native FormData
+ */
+const createNativeFileObject = (asset) => {
+  // Generate filename with timestamp to avoid duplicates
+  const timestamp = Date.now();
+  const originalName = asset.name || asset.fileName || "image.jpg";
+  const ext = originalName.split(".").pop() || "jpg";
+  const fileName = `incident_${timestamp}.${ext}`;
+
+  return {
+    uri: asset.uri,
+    name: fileName,
+    type: asset.mimeType || asset.type || "image/jpeg",
+    size: asset.size || 0,
+  };
+};
+
+/**
+ * Pick image from camera
+ */
+const pickImageFromCamera = async () => {
+  try {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert("Permission Required", "Camera permission is required");
+      return null;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.8, // Reduce quality slightly for better upload performance
+      base64: false,
+    });
+
+    if (result.canceled || !result.assets || result.assets.length === 0) {
+      return null;
+    }
+
+    return createNativeFileObject(result.assets[0]);
+  } catch (error) {
+    console.log("Camera pick error:", error);
+    Alert.alert("Error", "Failed to open camera");
+    return null;
+  }
+};
+
+/**
+ * Pick image from gallery
+ */
+const pickImageFromGallery = async () => {
+  try {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert("Permission Required", "Gallery permission is required");
+      return null;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.8,
+      base64: false,
+    });
+
+    if (result.canceled || !result.assets || result.assets.length === 0) {
+      return null;
+    }
+
+    return createNativeFileObject(result.assets[0]);
+  } catch (error) {
+    console.log("Gallery pick error:", error);
+    Alert.alert("Error", "Failed to open gallery");
+    return null;
+  }
+};
+
+/**
+ * Pick image from files
+ */
+const pickImageFromFiles = async () => {
+  try {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["image/jpeg", "image/png", "image/jpg"],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+
+    if (result.canceled || !result.assets || result.assets.length === 0) {
+      return null;
+    }
+
+    return createNativeFileObject(result.assets[0]);
+  } catch (error) {
+    console.log("Document pick error:", error);
+    Alert.alert("Error", "Failed to open document picker");
+    return null;
+  }
+};
+
+/**
+ * Common axios post for file upload
+ */
+const commonAxiosPost = async (url, formData) => {
+  try {
+    console.log("Uploading to URL:", url);
     
+    const response = await axios({
+      method: "post",
+      url: url,
+      data: formData,
+      headers: {
+        "Content-Type": "multipart/form-data",
+        "Accept": "application/json",
+      },
+      timeout: 30000, // 30 seconds timeout
+    });
+
+    console.log("Upload response status:", response.status);
+    console.log("Upload response data:", response.data);
+
+    if (response.status === 200 || response.status === 201) {
+      return response.data;
+    } else {
+      throw new Error(`Upload failed with status: ${response.status}`);
+    }
+  } catch (error) {
+    console.log("Upload error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    throw error;
+  }
+};
+
+/**
+ * Main function to upload image to bucket
+ */
+const ImageBucketNative = async (file, formik, path, name, size, dispatch) => {
+  if (!dispatch) {
+    console.error("Dispatch is required for ImageBucketNative");
+    return null;
+  }
+
+  dispatch(
+    showLoader("Uploading your file to the cloud...")
+  );
+
+  try {
+    // Validate file
+    if (!validateFileTypeAndSizeNative(file, size)) {
+      dispatch(hideLoader());
+      return null;
+    }
+
+    // Create FormData properly for React Native
+    const formData = new FormData();
+    
+    // Append file with proper structure for React Native
+    formData.append("file", {
+      uri: file.uri,
+      name: file.name,
+      type: file.type,
+    });
+
+    // Log for debugging
+    console.log("Uploading file:", {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      uri: file.uri,
+    });
+
+    // Make the API call
+    const responseData = await commonAxiosPost(
+      IMG_UPLOAD_URL + path,
+      formData
+    );
+
+    console.log("Upload successful, response:", responseData);
+
+    // Handle different response formats
+    let fileUrl = "";
+    if (typeof responseData === "string") {
+      fileUrl = responseData;
+    } else if (responseData?.data) {
+      fileUrl = responseData.data;
+    } else if (responseData?.filePath || responseData?.path) {
+      fileUrl = responseData.filePath || responseData.path;
+    } else if (responseData?.url) {
+      fileUrl = responseData.url;
+    } else if (responseData?.file) {
+      fileUrl = responseData.file;
+    }
+
+    // Construct full URL if needed
+    const fullUrl = fileUrl.startsWith("http") 
+      ? fileUrl 
+      : IMG_DOWNLOAD_URL + fileUrl;
+
+      console.log("fullUrl",fullUrl);
+      
+
+    // Update formik
+    await formik.setFieldValue(name, fullUrl);
+    
+    showSuccessToast("File uploaded successfully");
+    dispatch(hideLoader());
+    
+    return fullUrl;
+  } catch (error) {
+    console.log("ImageBucketNative upload error:", error);
+    
+    // Clear the field on error
+    await formik.setFieldValue(name, "");
+    
+    showErrorToast(error.response?.data?.message || "Upload failed. Please try again.");
+    dispatch(hideLoader());
+    
+    return null;
+  }
+};
+
+/**
+ * Unified function to pick and upload image
+ */
+const pickAndUploadImage = async ({
+  source,
+  formik,
+  path,
+  name,
+  size = MAX_FILE_SIZE,
+  dispatch,
+}) => {
+  try {
+    let file = null;
+
+    // Pick image based on source
+    switch (source) {
+      case "camera":
+        file = await pickImageFromCamera();
+        break;
+      case "gallery":
+        file = await pickImageFromGallery();
+        break;
+      case "files":
+        file = await pickImageFromFiles();
+        break;
+      default:
+        console.error("Invalid source:", source);
+        return null;
+    }
+
+    if (!file) {
+      console.log("No file selected");
+      return null;
+    }
+
+    // Upload the file
+    const uploadedUrl = await ImageBucketNative(
+      file,
+      formik,
+      path,
+      name,
+      size,
+      dispatch
+    );
+
+    return uploadedUrl;
+  } catch (error) {
+    console.log("pickAndUploadImage error:", error);
+    await formik.setFieldValue(name, "");
+    Alert.alert("Error", "Unable to process image");
+    return null;
+  }
+};
+
+/* ===========================
+   MAIN COMPONENT
+=========================== */
+
+const IncidentReporting = ({ route }) => {
+  const { item } = route.params;
+
+  console.log("iteem", item.id);
 
   const [ANIMALS, setAnimals] = useState([]);
   const [INCIDENTS, setIncidents] = useState([]);
@@ -104,6 +442,7 @@ const IncidentReporting = ({route}) => {
     description: Yup.string().required("Description is required"),
     animalCount: Yup.string().required("required"),
     incidentLocationId: Yup.string().required("Required"),
+    incidentPhoto: Yup.string().required("Incident photo is required"),
     otherIncidentLocation: Yup.string().test(
       "other-location-required",
       "Please enter other incident location",
@@ -114,10 +453,9 @@ const IncidentReporting = ({route}) => {
         }
         return true;
       }
-    )
+    ),
   });
 
-  
   const incidentFormik = useFormik({
     initialValues: {
       district: "",
@@ -136,6 +474,7 @@ const IncidentReporting = ({route}) => {
       incidentLocationId: "",
       otherIncidentLocation: "",
       animalCount: "",
+      incidentPhoto: "",
     },
     validationSchema,
     onSubmit: async () => {},
@@ -143,9 +482,9 @@ const IncidentReporting = ({route}) => {
     validateOnBlur: true,
   });
 
-  useEffect(()=>{
-       incidentFormik.setFieldValue("animalId", item.id);
-  },[])
+  useEffect(() => {
+    incidentFormik.setFieldValue("animalId", item.id);
+  }, []);
 
   const getAnimals = async () => {
     try {
@@ -361,8 +700,69 @@ const IncidentReporting = ({route}) => {
       animalCount: "Animal Count",
       incidentLocationId: "Location Type",
       otherIncidentLocation: "Other Incident Location",
+      incidentPhoto: "Incident Photo",
     };
     return labels[field] || field;
+  };
+
+  const openImageOptions = () => {
+    Alert.alert("Incident Photo", "Choose image source", [
+      {
+        text: "Camera",
+        onPress: async () => {
+          try {
+            await pickAndUploadImage({
+              source: "camera",
+              formik: incidentFormik,
+              path: "APFD/SAWMILLS/",
+              name: "incidentPhoto",
+              size: MAX_FILE_SIZE,
+              dispatch,
+            });
+          } catch (error) {
+            console.log("Camera upload error:", error);
+          }
+        },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          try {
+            await pickAndUploadImage({
+              source: "gallery",
+              formik: incidentFormik,
+              path: "APFD/SAWMILLS/",
+              name: "incidentPhoto",
+              size: MAX_FILE_SIZE,
+              dispatch,
+            });
+          } catch (error) {
+            console.log("Gallery upload error:", error);
+          }
+        },
+      },
+      {
+        text: "Files",
+        onPress: async () => {
+          try {
+            await pickAndUploadImage({
+              source: "files",
+              formik: incidentFormik,
+              path: "APFD/SAWMILLS/",
+              name: "incidentPhoto",
+              size: MAX_FILE_SIZE,
+              dispatch,
+            });
+          } catch (error) {
+            console.log("Files upload error:", error);
+          }
+        },
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ]);
   };
 
   useEffect(() => {
@@ -436,6 +836,55 @@ const IncidentReporting = ({route}) => {
               placeholder="Enter animal count"
             />
             {renderError("animalCount")}
+          </View>
+
+          <View style={styles.fieldBlock}>
+            <Text style={styles.label}>Incident Photo *</Text>
+
+            <TouchableOpacity
+              style={styles.imagePickerButton}
+              onPress={openImageOptions}
+            >
+              <Ionicons
+                name="cloud-upload-outline"
+                size={20}
+                color="#fff"
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.imagePickerButtonText}>
+                {incidentFormik.values.incidentPhoto
+                  ? "Change Incident Photo"
+                  : "Upload Incident Photo"}
+              </Text>
+            </TouchableOpacity>
+
+            {incidentFormik.values.incidentPhoto ? (
+              <View style={styles.previewWrapper}>
+                <Image
+                  source={{ uri: incidentFormik.values.incidentPhoto }}
+                  style={styles.previewImage}
+                  resizeMode="cover"
+                />
+
+                <View style={styles.previewActions}>
+                  <Text numberOfLines={1} style={styles.previewText}>
+                    Uploaded successfully
+                  </Text>
+
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() =>
+                      incidentFormik.setFieldValue("incidentPhoto", "")
+                    }
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#fff" />
+                    <Text style={styles.removeButtonText}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null}
+
+            {renderError("incidentPhoto")}
           </View>
 
           <View style={styles.fieldBlock}>
@@ -752,6 +1201,7 @@ const IncidentReporting = ({route}) => {
         />
       )}
 
+      {/* Validation Modal */}
       <Modal
         visible={showValidationModal}
         transparent
@@ -791,6 +1241,7 @@ const IncidentReporting = ({route}) => {
         </View>
       </Modal>
 
+      {/* OTP Modal */}
       <Modal
         visible={showOtpModal}
         transparent
@@ -972,6 +1423,58 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "800",
     fontSize: 15,
+  },
+  imagePickerButton: {
+    backgroundColor: "#2563eb",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+  },
+  imagePickerButtonText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  previewWrapper: {
+    marginTop: 12,
+    backgroundColor: "#f8fafc",
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#dbe4ff",
+  },
+  previewImage: {
+    width: "100%",
+    height: 220,
+    backgroundColor: "#e5e7eb",
+  },
+  previewActions: {
+    padding: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  previewText: {
+    flex: 1,
+    color: "#334155",
+    fontWeight: "600",
+    marginRight: 10,
+  },
+  removeButton: {
+    backgroundColor: "#dc2626",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  removeButtonText: {
+    color: "#fff",
+    marginLeft: 6,
+    fontWeight: "700",
   },
   modalOverlay: {
     flex: 1,
